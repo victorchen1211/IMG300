@@ -2,14 +2,21 @@
 
 import React from "react";
 import styles from "../../app/page.module.scss";
-import { ImageUploader } from "./ImageUploader";
-import { ImageFilterSelector } from "./ImageFilterSelector";
-import { OverlayFilmControl } from "./OverlayFilmControl";
-import { ClarityMaskControl, MaskLayer } from "./ClarityMaskControl";
-import { TypographyControl, TextLayer } from "./TypographyControl";
-import { PaletteSelector } from "./PaletteSelector";
-import { CanvasSizeSelector } from "./CanvasSizeSelector";
-import { ExportControls } from "./ExportControls";
+import {
+  ImageUploader,
+  PaletteSelector,
+  CanvasSizeSelector,
+  ExportControls
+} from "../common";
+import {
+  ImageFilterSelector,
+  OverlayFilmControl,
+  ClarityMaskControl,
+  TypographyControl,
+  MaskLayer,
+  TextLayer,
+  TextAlignMode
+} from "../blurAndReveal";
 
 interface ToolPanelProps {
   hasImage: boolean;

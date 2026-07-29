@@ -12,9 +12,18 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ hasImage, onUpload
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => onUploadImage(img);
-    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      onUploadImage(img);
+      // Revoke ObjectURL to immediately free browser memory
+      URL.revokeObjectURL(objectUrl);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+    img.src = objectUrl;
     e.target.value = "";
   };
 

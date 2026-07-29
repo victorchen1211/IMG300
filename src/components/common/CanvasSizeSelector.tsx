@@ -13,15 +13,17 @@ export const CanvasSizeSelector: React.FC<CanvasSizeSelectorProps> = ({ selected
   return (
     <div>
       <div className={styles.sectionHeader}>
-        <span>Canvas Size</span>
+        <span>Canvas Dimension</span>
       </div>
-      <select value={selectedFormat} onChange={(e) => onSelectFormat(e.target.value)} style={{ marginBottom: 16 }}>
-        {Object.keys(EXPORT_SIZES).map((fmt) => (
-          <option key={fmt} value={fmt}>
-            {fmt}
-          </option>
-        ))}
-      </select>
+      <div style={{ marginBottom: 14 }}>
+        <select value={selectedFormat} onChange={(e) => onSelectFormat(e.target.value)}>
+          {Object.entries(EXPORT_SIZES).map(([key, dim]) => (
+            <option key={key} value={key}>
+              {key} ({dim.w}x{dim.h})
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 };

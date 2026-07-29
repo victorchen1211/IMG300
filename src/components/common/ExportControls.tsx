@@ -14,11 +14,11 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ onExportPNG, onE
       <div className={styles.sectionHeader}>
         <span>Export Options</span>
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", gap: "8px", marginBottom: 14 }}>
         <button className="primary" style={{ flex: 1 }} onClick={onExportPNG}>
-          Download PNG
+          Export PNG
         </button>
-        <button style={{ flex: 1 }} onClick={onExportSVG}>
+        <button className="button" style={{ flex: 1 }} onClick={onExportSVG}>
           Export SVG
         </button>
       </div>

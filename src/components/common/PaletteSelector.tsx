@@ -15,13 +15,15 @@ export const PaletteSelector: React.FC<PaletteSelectorProps> = ({ selectedPalett
       <div className={styles.sectionHeader}>
         <span>Color Palette</span>
       </div>
-      <select value={selectedPaletteKey} onChange={(e) => onSelectPalette(e.target.value)} style={{ marginBottom: 14 }}>
-        {Object.entries(COLOR_PALETTES).map(([key, pal]) => (
-          <option key={key} value={key}>
-            {pal.name}
-          </option>
-        ))}
-      </select>
+      <div style={{ marginBottom: 14 }}>
+        <select value={selectedPaletteKey} onChange={(e) => onSelectPalette(e.target.value)}>
+          {Object.entries(COLOR_PALETTES).map(([key, pal]) => (
+            <option key={key} value={key}>
+              {pal.name}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 };

@@ -2,7 +2,7 @@
 
 import React from "react";
 import styles from "../../app/page.module.scss";
-import { ToggleSwitch } from "./ToggleSwitch";
+import { ToggleSwitch } from "../common/ToggleSwitch";
 
 interface OverlayFilmControlProps {
   enabled: boolean;

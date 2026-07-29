@@ -12,8 +12,10 @@ export interface TextLayer {
   text: string;
   fontSize: number;
   textAlign: TextAlignMode;
+  color: string;
   posX: number; // 0 to 1
   posY: number; // 0 to 1
+  behindGlass?: boolean; // Optional: for Glass Effect (true = behind glass pane)
 }
 
 interface TypographyControlProps {
@@ -23,6 +25,7 @@ interface TypographyControlProps {
   onDeleteText: (id: string) => void;
   onSelectText: (id: string) => void;
   onUpdateText: (id: string, updates: Partial<TextLayer>) => void;
+  showBehindGlassOption?: boolean;
 }
 
 export const TypographyControl: React.FC<TypographyControlProps> = ({
@@ -31,7 +34,8 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
   onAddText,
   onDeleteText,
   onSelectText,
-  onUpdateText
+  onUpdateText,
+  showBehindGlassOption = false
 }) => {
   const activeText = texts.find((t) => t.id === selectedTextId) || texts[0];
 
@@ -96,8 +100,8 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
 
             {activeText.enabled && (
               <>
-                <div style={{ fontSize: 8, color: "#aaa", marginBottom: 8, lineHeight: 1.4 }}>
-                  Hint: Drag canvas directly to position text
+                <div style={{ fontSize: 10, color: "#888", marginBottom: 8, lineHeight: 1.4 }}>
+                  Hint: Drag canvas directly to reposition active text
                 </div>
 
                 <textarea
@@ -110,10 +114,10 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                     padding: "8px",
                     fontSize: "12px",
                     fontFamily: '"Telegraf", system-ui, sans-serif',
-                    border: "1px solid #ddd",
-                    borderRadius: "0",
-                    background: "#ffffff",
-                    color: "#222",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    borderRadius: "4px",
+                    background: "rgba(0, 0, 0, 0.4)",
+                    color: "#fff",
                     resize: "vertical",
                     marginBottom: 10
                   }}
@@ -128,11 +132,34 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                   <input
                     type="range"
                     min={16}
-                    max={160}
+                    max={200}
                     step={2}
                     value={activeText.fontSize}
                     onChange={(e) => onUpdateText(activeText.id, { fontSize: parseInt(e.target.value) })}
                   />
+                </div>
+
+                {/* Text Color Selection */}
+                <div className={styles.controlGroup}>
+                  <div className={styles.controlHeader}>
+                    <span className={styles.controlLabel}>Text Color</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4, marginBottom: 10 }}>
+                    {["#ffffff", "#000000", "#ff3366", "#00e5ff", "#ffcc00"].map((c) => (
+                      <button
+                        key={c}
+                        onClick={() => onUpdateText(activeText.id, { color: c })}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          backgroundColor: c,
+                          border: activeText.color === c ? "2px solid #fff" : "1px solid rgba(255,255,255,0.2)",
+                          cursor: "pointer"
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 {/* Text Alignment */}
@@ -143,7 +170,15 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                   <select
                     value={activeText.textAlign}
                     onChange={(e) => onUpdateText(activeText.id, { textAlign: e.target.value as TextAlignMode })}
-                    style={{ marginBottom: 10 }}
+                    style={{
+                      width: "100%",
+                      padding: "6px",
+                      background: "rgba(0,0,0,0.4)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 4,
+                      marginBottom: 10
+                    }}
                   >
                     <option value="left">Left</option>
                     <option value="center">Center</option>
@@ -182,6 +217,19 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                     onChange={(e) => onUpdateText(activeText.id, { posY: parseFloat(e.target.value) / 100 })}
                   />
                 </div>
+
+                {/* Optional Behind Glass Option for Glass Effect */}
+                {showBehindGlassOption && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+                    <span className={styles.controlLabel}>Place Behind Glass Pane</span>
+                    <input
+                      type="checkbox"
+                      checked={activeText.behindGlass ?? true}
+                      onChange={(e) => onUpdateText(activeText.id, { behindGlass: e.target.checked })}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </div>
+                )}
               </>
             )}
           </>
