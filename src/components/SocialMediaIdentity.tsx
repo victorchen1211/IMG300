@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
+import { FilesetResolver, FaceLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
-// MediaPipe Face Oval Contour Landmark Indices (in order around face)
+// MediaPipe Face Oval Contour Landmark Indices
 const FACE_OVAL_LANDMARKS = [
   10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377,
   152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
@@ -14,21 +14,22 @@ export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const mosaicOffscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sketchOffscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Control State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
-  const [isMosaicActive, setIsMosaicActive] = useState<boolean>(true);
-  const [mosaicSize, setMosaicSize] = useState<number>(18); // Block size in px
-  const [glassOpacity, setGlassOpacity] = useState<number>(0.5); // 0.2 ~ 0.8
+  const [isPinchActive, setIsPinchActive] = useState<boolean>(false);
+  const [manualSketchMode, setManualSketchMode] = useState<boolean>(false);
+  const [sketchContrast, setSketchContrast] = useState<number>(1.8);
 
-  // Refs for MediaPipe & Animation
+  // Refs for MediaPipe Models & Animation
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
+  const handLandmarkerRef = useRef<HandLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Initialize MediaPipe Face Landmarker
+  // Initialize MediaPipe Face & Hand Landmarker Models
   useEffect(() => {
     let isMounted = true;
     const initMediaPipe = async () => {
@@ -37,6 +38,7 @@ export const SocialMediaIdentity: React.FC = () => {
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
 
+        // Face Landmarker Model
         const faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -46,8 +48,19 @@ export const SocialMediaIdentity: React.FC = () => {
           numFaces: 1
         });
 
+        // Hand Landmarker Model for Index-to-Thumb Pinch Detection
+        const handLandmarker = await HandLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numHands: 2
+        });
+
         if (isMounted) {
           faceLandmarkerRef.current = faceLandmarker;
+          handLandmarkerRef.current = handLandmarker;
         }
       } catch (err) {
         console.warn("MediaPipe load warning:", err);
@@ -88,17 +101,18 @@ export const SocialMediaIdentity: React.FC = () => {
     }
     setIsCameraActive(false);
     setFaceDetected(false);
+    setIsPinchActive(false);
   };
 
-  // Render Clean Semi-Transparent Glass Pixel Mosaic clipped STRICTLY to inner face contour
-  const renderGlassMosaic = (
+  // Real-time Pencil Sketch Shader & Cross-Hatch Rendering Engine
+  const renderPencilSketch = (
     ctx: CanvasRenderingContext2D,
     video: HTMLVideoElement,
     landmarks: any[],
     canvasW: number,
     canvasH: number
   ) => {
-    // 1. Calculate tight bounding box of face landmarks
+    // 1. Compute Face Bounding Box
     let minX = 1, maxX = 0, minY = 1, maxY = 0;
     FACE_OVAL_LANDMARKS.forEach((idx) => {
       const pt = landmarks[idx];
@@ -117,14 +131,14 @@ export const SocialMediaIdentity: React.FC = () => {
 
     if (boxW <= 0 || boxH <= 0) return;
 
-    // 2. Setup offscreen low-res pixel sampling canvas
-    const sampleW = Math.max(8, Math.floor(boxW / mosaicSize));
-    const sampleH = Math.max(8, Math.floor(boxH / mosaicSize));
+    // 2. Offscreen canvas for Sobel Pencil Edge Extraction
+    const sampleW = Math.max(120, Math.floor(boxW / 2));
+    const sampleH = Math.max(120, Math.floor(boxH / 2));
 
-    if (!mosaicOffscreenCanvasRef.current) {
-      mosaicOffscreenCanvasRef.current = document.createElement("canvas");
+    if (!sketchOffscreenCanvasRef.current) {
+      sketchOffscreenCanvasRef.current = document.createElement("canvas");
     }
-    const oCanvas = mosaicOffscreenCanvasRef.current;
+    const oCanvas = sketchOffscreenCanvasRef.current;
     if (oCanvas.width !== sampleW || oCanvas.height !== sampleH) {
       oCanvas.width = sampleW;
       oCanvas.height = sampleH;
@@ -132,7 +146,7 @@ export const SocialMediaIdentity: React.FC = () => {
     const oCtx = oCanvas.getContext("2d");
     if (!oCtx) return;
 
-    // Video coordinates (unmirrored for sampling)
+    // Video crop coordinates
     const vW = video.videoWidth;
     const vH = video.videoHeight;
     const cropX = Math.max(0, (1 - (boxX + boxW) / canvasW) * vW);
@@ -146,14 +160,64 @@ export const SocialMediaIdentity: React.FC = () => {
     oCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, sampleW, sampleH);
     oCtx.restore();
 
-    const imgData = oCtx.getImageData(0, 0, sampleW, sampleH).data;
+    const srcImgData = oCtx.getImageData(0, 0, sampleW, sampleH);
+    const srcData = srcImgData.data;
 
-    const blockW = boxW / sampleW;
-    const blockH = boxH / sampleH;
+    // Grayscale Luminance Map
+    const gray = new Float32Array(sampleW * sampleH);
+    for (let i = 0; i < sampleW * sampleH; i++) {
+      const r = srcData[i * 4];
+      const g = srcData[i * 4 + 1];
+      const b = srcData[i * 4 + 2];
+      gray[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+    }
 
+    const outImgData = oCtx.createImageData(sampleW, sampleH);
+    const outData = outImgData.data;
+
+    // Sobel Edge Detection + Cross-Hatching Pencil Shader
+    for (let y = 1; y < sampleH - 1; y++) {
+      for (let x = 1; x < sampleW - 1; x++) {
+        const idx = y * sampleW + x;
+
+        // Sobel Gradient Kernels
+        const gx =
+          -gray[idx - sampleW - 1] + gray[idx - sampleW + 1] +
+          -2 * gray[idx - 1] + 2 * gray[idx + 1] +
+          -gray[idx + sampleW - 1] + gray[idx + sampleW + 1];
+
+        const gy =
+          -gray[idx - sampleW - 1] - 2 * gray[idx - sampleW] - gray[idx - sampleW + 1] +
+          gray[idx + sampleW - 1] + 2 * gray[idx + sampleW] + gray[idx + sampleW + 1];
+
+        const edge = Math.sqrt(gx * gx + gy * gy) * sketchContrast;
+        const lum = gray[idx];
+
+        // Charcoal Graphite Intensity (0 = Paper White, 255 = Charcoal Dark)
+        let charcoal = edge;
+
+        // Add Cross-Hatch Pencil Shading in dark areas
+        if (lum < 110) {
+          if ((x + y) % 4 === 0) charcoal += (110 - lum) * 0.9;
+        }
+        if (lum < 60) {
+          if ((x - y) % 4 === 0) charcoal += (60 - lum) * 1.1;
+        }
+
+        const pencilVal = Math.max(0, Math.min(255, 255 - charcoal));
+
+        const outIdx = idx * 4;
+        outData[outIdx] = pencilVal;     // R
+        outData[outIdx + 1] = pencilVal; // G
+        outData[outIdx + 2] = pencilVal; // B
+        outData[outIdx + 3] = 245;       // Alpha
+      }
+    }
+
+    oCtx.putImageData(outImgData, 0, 0);
+
+    // 3. Render Pencil Sketch clipped strictly to Face Oval Contour
     ctx.save();
-
-    // 3. Clip rendering context strictly to the Face Oval Contour (No hair, forehead, ears, or neck!)
     ctx.beginPath();
     FACE_OVAL_LANDMARKS.forEach((idx, i) => {
       const pt = landmarks[idx];
@@ -165,25 +229,12 @@ export const SocialMediaIdentity: React.FC = () => {
       }
     });
     ctx.closePath();
-    ctx.clip(); // Restrict glass mosaic strictly inside face contour!
+    ctx.clip();
 
-    // 4. Loop through mosaic pixel blocks - Clean seamless glass fill
-    for (let gy = 0; gy < sampleH; gy++) {
-      for (let gx = 0; gx < sampleW; gx++) {
-        const idx = (gy * sampleW + gx) * 4;
-        const r = imgData[idx];
-        const g = imgData[idx + 1];
-        const b = imgData[idx + 2];
+    // Draw processed Pencil Sketch Canvas over Face
+    ctx.drawImage(oCanvas, boxX, boxY, boxW, boxH);
 
-        const posX = boxX + gx * blockW;
-        const posY = boxY + gy * blockH;
-
-        // Semi-Transparent Glass Color Fill
-        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${glassOpacity})`;
-        ctx.fillRect(posX, posY, blockW + 0.5, blockH + 0.5);
-      }
-    }
-
+    // Subtle Graphite Pencil Outline Badge
     ctx.restore();
   };
 
@@ -209,7 +260,43 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.drawImage(video, 0, 0, w, h);
       ctx.restore();
 
-      // 2. MediaPipe AI Real-time Face Detection
+      // 2. MediaPipe HandLandmarker Pinch Gesture Detection (Index Tip 8 <-> Thumb Tip 4)
+      let detectedPinch = false;
+      const detectedHandLandmarks: any[] = [];
+
+      if (handLandmarkerRef.current) {
+        try {
+          const handResults = handLandmarkerRef.current.detectForVideo(video, now);
+          if (handResults.landmarks && handResults.landmarks.length > 0) {
+            handResults.landmarks.forEach((handPoints) => {
+              detectedHandLandmarks.push(handPoints);
+              const thumbTip = handPoints[4]; // Thumb tip
+              const indexTip = handPoints[8]; // Index finger tip
+
+              if (thumbTip && indexTip) {
+                const pinchDist = Math.hypot(
+                  thumbTip.x - indexTip.x,
+                  thumbTip.y - indexTip.y,
+                  (thumbTip.z || 0) - (indexTip.z || 0)
+                );
+
+                // Pinch threshold: distance < 0.048
+                if (pinchDist < 0.048) {
+                  detectedPinch = true;
+                }
+              }
+            });
+          }
+        } catch (e) {
+          // Hand frame skip
+        }
+      }
+
+      setIsPinchActive(detectedPinch);
+
+      const isSketchActive = detectedPinch || manualSketchMode;
+
+      // 3. MediaPipe AI Real-time Face Detection
       if (faceLandmarkerRef.current) {
         try {
           const results = faceLandmarkerRef.current.detectForVideo(video, now);
@@ -217,9 +304,9 @@ export const SocialMediaIdentity: React.FC = () => {
             setFaceDetected(true);
             const landmarks = results.faceLandmarks[0];
 
-            // 3. Render Clean Semi-Transparent Glass Mosaic STRICTLY over Face Contour
-            if (isMosaicActive) {
-              renderGlassMosaic(ctx, video, landmarks, w, h);
+            // Render Pencil Sketch Art Effect over Face Contour when Pinching
+            if (isSketchActive) {
+              renderPencilSketch(ctx, video, landmarks, w, h);
             }
           } else {
             setFaceDetected(false);
@@ -228,6 +315,40 @@ export const SocialMediaIdentity: React.FC = () => {
           // Frame skip
         }
       }
+
+      // 4. Render Hand Pinch Indicator Target Lines over Hands
+      detectedHandLandmarks.forEach((handPoints) => {
+        const thumbTip = handPoints[4];
+        const indexTip = handPoints[8];
+        if (thumbTip && indexTip) {
+          const tx = (1 - thumbTip.x) * w;
+          const ty = thumbTip.y * h;
+          const ix = (1 - indexTip.x) * w;
+          const iy = indexTip.y * h;
+
+          ctx.save();
+          ctx.strokeStyle = detectedPinch ? "#00ff22" : "rgba(255, 255, 255, 0.4)";
+          ctx.lineWidth = detectedPinch ? 3 : 1.5;
+
+          ctx.beginPath();
+          ctx.moveTo(tx, ty);
+          ctx.lineTo(ix, iy);
+          ctx.stroke();
+
+          ctx.fillStyle = detectedPinch ? "#00ff22" : "#ffffff";
+          ctx.beginPath();
+          ctx.arc(tx, ty, 4, 0, Math.PI * 2);
+          ctx.arc(ix, iy, 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          if (detectedPinch) {
+            ctx.font = '800 11px "Space Mono", monospace';
+            ctx.fillText("👌 PINCH (SKETCH)", ix + 10, iy);
+          }
+
+          ctx.restore();
+        }
+      });
     } else {
       // Dark cyber background when camera is off
       const grad = ctx.createLinearGradient(0, 0, w, h);
@@ -256,11 +377,11 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillStyle = "#00ff22";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM FOR REAL-TIME TRANSPARENT FACE MOSAIC", w / 2, h / 2);
+      ctx.fillText("PINCH INDEX TO THUMB 👌 FOR FACE PENCIL SKETCH ART", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, isMosaicActive, mosaicSize, glassOpacity]);
+  }, [isCameraActive, manualSketchMode, sketchContrast]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -279,7 +400,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Transparent Face Mosaic</div>
+        <div className={styles.brandSubtitle}>Pinch Gesture Face Sketch</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -319,9 +440,9 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* Glass Mosaic Settings Section */}
+        {/* Pencil Sketch Controls Section */}
         <div className={styles.sectionHeader}>
-          <span>Transparent Mosaic Controls</span>
+          <span>Pencil Sketch Gesture</span>
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -331,45 +452,29 @@ export const SocialMediaIdentity: React.FC = () => {
               padding: "10px",
               fontSize: "12px",
               fontWeight: 700,
-              color: isMosaicActive ? "#000" : "#fff",
-              background: isMosaicActive ? "#00ff22" : "rgba(255, 255, 255, 0.08)",
+              color: manualSketchMode || isPinchActive ? "#000" : "#fff",
+              background: manualSketchMode || isPinchActive ? "#00ff22" : "rgba(255, 255, 255, 0.08)",
               border: "1px solid #00ff22"
             }}
-            onClick={() => setIsMosaicActive((prev) => !prev)}
+            onClick={() => setManualSketchMode((prev) => !prev)}
           >
-            🔲 {isMosaicActive ? "Glass Mosaic ON" : "Mosaic OFF"}
+            👌 {manualSketchMode || isPinchActive ? "Sketch Mode ON" : "Toggle Sketch Mode (or Pinch 👌)"}
           </button>
         </div>
 
-        {/* Mosaic Pixel Block Size Slider */}
+        {/* Sketch Contrast Slider */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Mosaic Pixel Size</span>
-            <span className={styles.controlValue}>{mosaicSize}px</span>
+            <span className={styles.controlLabel}>Pencil Edge Contrast</span>
+            <span className={styles.controlValue}>{sketchContrast.toFixed(1)}x</span>
           </div>
           <input
             type="range"
-            min={8}
-            max={40}
-            step={2}
-            value={mosaicSize}
-            onChange={(e) => setMosaicSize(parseInt(e.target.value))}
-          />
-        </div>
-
-        {/* Glass Opacity Slider */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Glass Transparency</span>
-            <span className={styles.controlValue}>{Math.round(glassOpacity * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min={0.15}
-            max={0.85}
-            step={0.05}
-            value={glassOpacity}
-            onChange={(e) => setGlassOpacity(parseFloat(e.target.value))}
+            min={1.0}
+            max={3.0}
+            step={0.1}
+            value={sketchContrast}
+            onChange={(e) => setSketchContrast(parseFloat(e.target.value))}
           />
         </div>
 
@@ -393,9 +498,9 @@ export const SocialMediaIdentity: React.FC = () => {
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Glass Mosaic Mode</span>
-            <span style={{ color: isMosaicActive ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {isMosaicActive ? "TRANSPARENT" : "DISABLED"}
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Pinch Gesture 👌</span>
+            <span style={{ color: isPinchActive || manualSketchMode ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
+              {isPinchActive || manualSketchMode ? "👌 SKETCH ACTIVE" : "RELEASED"}
             </span>
           </div>
         </div>
@@ -426,7 +531,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          AI Transparent Face Mosaic • Created by Victor Chen
+          AI Pinch Gesture Face Sketch Art • Pinch Index & Thumb 👌 to Transform Face into Pencil Portrait
         </div>
       </div>
     </div>
