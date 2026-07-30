@@ -8,17 +8,21 @@ export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const snapshotCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Control State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
+  const [subjectId, setSubjectId] = useState<string>("0-2727-07");
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const hasSnapshotRef = useRef<boolean>(false);
+  const lastSnapshotTimeRef = useRef<number>(0);
 
-  // Load MediaPipe Face Landmarker Tasks Vision Model
+  // Initialize MediaPipe Face Landmarker
   useEffect(() => {
     let isMounted = true;
     const initMediaPipe = async () => {
@@ -76,9 +80,52 @@ export const SocialMediaIdentity: React.FC = () => {
     }
     setIsCameraActive(false);
     setFaceDetected(false);
+    hasSnapshotRef.current = false;
   };
 
-  // Render Canvas Loop (Webcam Stream + MediaPipe Face Green Bounding Contour)
+  // Capture B&W Face Snapshot onto offscreen snapshot canvas
+  const updateFaceSnapshot = (
+    video: HTMLVideoElement,
+    srcX: number,
+    srcY: number,
+    srcW: number,
+    srcH: number
+  ) => {
+    if (!snapshotCanvasRef.current) {
+      snapshotCanvasRef.current = document.createElement("canvas");
+      snapshotCanvasRef.current.width = 240;
+      snapshotCanvasRef.current.height = 280;
+    }
+    const snapCanvas = snapshotCanvasRef.current;
+    const snapCtx = snapCanvas.getContext("2d");
+    if (!snapCtx) return;
+
+    snapCtx.save();
+    // High contrast Grayscale Noir B&W filter
+    snapCtx.filter = "grayscale(100%) contrast(140%) brightness(105%)";
+    snapCtx.clearRect(0, 0, 240, 280);
+
+    // Add slight padding around cropped face
+    const padX = srcW * 0.3;
+    const padY = srcH * 0.4;
+    const cropX = Math.max(0, srcX - padX);
+    const cropY = Math.max(0, srcY - padY);
+    const cropW = Math.min(video.videoWidth - cropX, srcW + padX * 2);
+    const cropH = Math.min(video.videoHeight - cropY, srcH + padY * 2);
+
+    snapCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, 240, 280);
+    snapCtx.restore();
+
+    // Add subtle TV scanline texture effect on snapshot
+    snapCtx.fillStyle = "rgba(255, 255, 255, 0.04)";
+    for (let y = 0; y < 280; y += 4) {
+      snapCtx.fillRect(0, y, 240, 2);
+    }
+
+    hasSnapshotRef.current = true;
+  };
+
+  // Main Render Loop (AI Surveillance HUD Pipeline)
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -88,6 +135,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
     const w = canvas.width;
     const h = canvas.height;
+    const now = performance.now();
 
     ctx.clearRect(0, 0, w, h);
 
@@ -100,9 +148,11 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.restore();
 
       // 2. MediaPipe AI Real-time Face Detection
+      let detectedBoundingBox: { x: number; y: number; w: number; h: number } | null = null;
+
       if (faceLandmarkerRef.current) {
         try {
-          const results = faceLandmarkerRef.current.detectForVideo(video, performance.now());
+          const results = faceLandmarkerRef.current.detectForVideo(video, now);
           if (results.faceLandmarks && results.faceLandmarks.length > 0) {
             setFaceDetected(true);
             const landmarks = results.faceLandmarks[0];
@@ -115,69 +165,277 @@ export const SocialMediaIdentity: React.FC = () => {
               if (pt.y > maxY) maxY = pt.y;
             });
 
-            // Mirror X coordinate because canvas is mirrored for natural selfie view
+            // Video source coordinates (unmirrored) for snapshot cropping
+            const rawSrcX = minX * video.videoWidth;
+            const rawSrcY = minY * video.videoHeight;
+            const rawSrcW = (maxX - minX) * video.videoWidth;
+            const rawSrcH = (maxY - minY) * video.videoHeight;
+
+            // Canvas coordinates (mirrored for display)
             const boxX = (1 - maxX) * w;
             const boxY = minY * h;
             const boxW = (maxX - minX) * w;
             const boxH = (maxY - minY) * h;
 
-            // Draw Green Bounding Line / Box around detected face
-            ctx.save();
-            ctx.strokeStyle = "#00ff66";
-            ctx.lineWidth = 3;
-            ctx.shadowColor = "rgba(0, 255, 102, 0.8)";
-            ctx.shadowBlur = 12;
+            detectedBoundingBox = { x: boxX, y: boxY, w: boxW, h: boxH };
 
-            // Draw Green Bounding Box
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-            // Draw Corner Accents
-            const bracket = Math.min(boxW, boxH) * 0.2;
-            ctx.lineWidth = 5;
-
-            // Top-Left Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX, boxY + bracket);
-            ctx.lineTo(boxX, boxY);
-            ctx.lineTo(boxX + bracket, boxY);
-            ctx.stroke();
-
-            // Top-Right Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW - bracket, boxY);
-            ctx.lineTo(boxX + boxW, boxY);
-            ctx.lineTo(boxX + boxW, boxY + bracket);
-            ctx.stroke();
-
-            // Bottom-Left Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX, boxY + boxH - bracket);
-            ctx.lineTo(boxX, boxY + boxH);
-            ctx.lineTo(boxX + bracket, boxY + boxH);
-            ctx.stroke();
-
-            // Bottom-Right Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW - bracket, boxY + boxH);
-            ctx.lineTo(boxX + boxW, boxY + boxH);
-            ctx.lineTo(boxX + boxW, boxY + boxH - bracket);
-            ctx.stroke();
-
-            // Green Label Badge
-            ctx.fillStyle = "#00ff66";
-            ctx.fillRect(boxX, boxY - 24, 116, 22);
-            ctx.fillStyle = "#000000";
-            ctx.font = '700 11px "Space Mono", monospace';
-            ctx.fillText("FACE DETECTED", boxX + 6, boxY - 8);
-
-            ctx.restore();
+            // Periodically update B&W face snapshot every 1.5s
+            if (!hasSnapshotRef.current || now - lastSnapshotTimeRef.current > 1500) {
+              updateFaceSnapshot(video, rawSrcX, rawSrcY, rawSrcW, rawSrcH);
+              lastSnapshotTimeRef.current = now;
+            }
           } else {
             setFaceDetected(false);
           }
         } catch (e) {
-          // Frame skip handling
+          // Frame skip
         }
       }
+
+      const pinkColor = "#ff0055";
+
+      // 3. Render Target Tracking Box over Detected Face (Hot Pink #ff0055)
+      if (detectedBoundingBox) {
+        const { x: bX, y: bY, w: bW, h: bH } = detectedBoundingBox;
+        ctx.save();
+        ctx.strokeStyle = pinkColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(bX, bY, bW, bH);
+
+        // Corner Brackets for Face Box
+        const bracket = Math.min(bW, bH) * 0.25;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = pinkColor;
+
+        // Top-Left
+        ctx.beginPath();
+        ctx.moveTo(bX, bY + bracket);
+        ctx.lineTo(bX, bY);
+        ctx.lineTo(bX + bracket, bY);
+        ctx.stroke();
+
+        // Top-Right
+        ctx.beginPath();
+        ctx.moveTo(bX + bW - bracket, bY);
+        ctx.lineTo(bX + bW, bY);
+        ctx.lineTo(bX + bW, bY + bracket);
+        ctx.stroke();
+
+        // Bottom-Left
+        ctx.beginPath();
+        ctx.moveTo(bX, bY + bH - bracket);
+        ctx.lineTo(bX, bY + bH);
+        ctx.lineTo(bX + bracket, bY + bH);
+        ctx.stroke();
+
+        // Bottom-Right
+        ctx.beginPath();
+        ctx.moveTo(bX + bW - bracket, bY + bH);
+        ctx.lineTo(bX + bW, bY + bH);
+        ctx.lineTo(bX + bW, bY + bH - bracket);
+        ctx.stroke();
+
+        // Small tag under box
+        ctx.fillStyle = pinkColor;
+        ctx.font = '700 10px "Space Mono", monospace';
+        ctx.fillText("Subject Identified", bX, bY + bH + 16);
+
+        ctx.restore();
+      }
+
+      // 4. Render Auxiliary Cyber White Bracket Reticles [ ] in Scene
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.lineWidth = 2;
+      const auxReticles = [
+        { x: w * 0.48, y: h * 0.12, size: 28 },
+        { x: w * 0.72, y: h * 0.22, size: 36 },
+        { x: w * 0.82, y: h * 0.75, size: 32 }
+      ];
+      auxReticles.forEach((r) => {
+        const arm = 8;
+        // Top-Left
+        ctx.beginPath();
+        ctx.moveTo(r.x, r.y + arm);
+        ctx.lineTo(r.x, r.y);
+        ctx.lineTo(r.x + arm, r.y);
+        ctx.stroke();
+
+        // Top-Right
+        ctx.beginPath();
+        ctx.moveTo(r.x + r.size - arm, r.y);
+        ctx.lineTo(r.x + r.size, r.y);
+        ctx.lineTo(r.x + r.size, r.y + arm);
+        ctx.stroke();
+
+        // Bottom-Left
+        ctx.beginPath();
+        ctx.moveTo(r.x, r.y + r.size - arm);
+        ctx.lineTo(r.x, r.y + r.size);
+        ctx.lineTo(r.x + arm, r.y + r.size);
+        ctx.stroke();
+
+        // Bottom-Right
+        ctx.beginPath();
+        ctx.moveTo(r.x + r.size - arm, r.y + r.size);
+        ctx.lineTo(r.x + r.size, r.y + r.size);
+        ctx.lineTo(r.x + r.size, r.y + r.size - arm);
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // 5. Render Cyber Crime Dossier HUD Panel (Left Side)
+      ctx.save();
+      const panelX = 36;
+      const panelY = 40;
+      const panelW = 310;
+
+      // Header Badge "SUBJECT IDENTIFIED"
+      ctx.fillStyle = pinkColor;
+      ctx.fillRect(panelX, panelY, 190, 28);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 12px "Space Mono", monospace';
+      ctx.fillText("SUBJECT IDENTIFIED", panelX + 12, panelY + 18);
+
+      // B&W Photo Frame Container
+      const photoY = panelY + 36;
+      const photoW = 240;
+      const photoH = 280;
+
+      ctx.strokeStyle = pinkColor;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(panelX, photoY, photoW, photoH);
+
+      // Draw B&W Face Snapshot if available
+      if (hasSnapshotRef.current && snapshotCanvasRef.current) {
+        ctx.drawImage(snapshotCanvasRef.current, panelX, photoY, photoW, photoH);
+      } else {
+        // Placeholder when searching
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(panelX, photoY, photoW, photoH);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.font = '700 12px "Space Mono", monospace';
+        ctx.textAlign = "center";
+        ctx.fillText("SEARCHING TARGET...", panelX + photoW / 2, photoY + photoH / 2);
+        ctx.textAlign = "left";
+      }
+
+      // ID Tag Badge
+      const idY = photoY + photoH + 12;
+      ctx.fillStyle = pinkColor;
+      ctx.fillRect(panelX + photoW - 110, idY, 110, 22);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 11px "Space Mono", monospace';
+      ctx.fillText(`ID:${subjectId}`, panelX + photoW - 102, idY + 15);
+
+      // Dossier Text Info Box
+      const dossierY = idY + 30;
+      const dossierH = 240;
+
+      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
+      ctx.fillRect(panelX, dossierY, panelW, dossierH);
+      ctx.strokeStyle = pinkColor;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(panelX, dossierY, panelW, dossierH);
+
+      // Dossier Text Content
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 10px "Space Mono", monospace';
+      let ty = dossierY + 22;
+
+      ctx.fillText("DOSSIER: TARGET AGENT", panelX + 12, ty); ty += 18;
+      ctx.fillText("STATUS: TOP SECRET", panelX + 12, ty); ty += 18;
+      ctx.fillText("OBJECT: VISUAL ENGINEER", panelX + 12, ty); ty += 22;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.font = '400 9px "Space Mono", monospace';
+      ctx.fillText("LEGEND: Creative Technologist", panelX + 12, ty); ty += 15;
+      ctx.fillText("building interactive WebGL shaders.", panelX + 12, ty); ty += 22;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 10px "Space Mono", monospace';
+      ctx.fillText("TECHNICAL SPECS:", panelX + 12, ty); ty += 18;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+      ctx.font = '400 9px "Space Mono", monospace';
+      ctx.fillText("System: Full MediaPipe & Three.js", panelX + 12, ty); ty += 15;
+      ctx.fillText("Arsenal: AI Computer Vision & WebGL", panelX + 12, ty); ty += 15;
+
+      // Bottom CTA Button "DETAILED INFORMATION ➔"
+      const ctaY = dossierY + dossierH - 32;
+      ctx.fillStyle = pinkColor;
+      ctx.fillRect(panelX, ctaY, panelW, 32);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 11px "Space Mono", monospace';
+      ctx.fillText("DETAILED INFORMATION  ➔", panelX + 14, ctaY + 20);
+
+      ctx.restore();
+
+      // 6. Render Viewport Outer Four Corner Brackets (Hot Pink #ff0055 L-shaped right angles)
+      ctx.save();
+      ctx.strokeStyle = pinkColor;
+      ctx.lineWidth = 4;
+      const margin = 20;
+      const cornerLen = 50;
+
+      // Top-Left Outer Corner
+      ctx.beginPath();
+      ctx.moveTo(margin, margin + cornerLen);
+      ctx.lineTo(margin, margin);
+      ctx.lineTo(margin + cornerLen, margin);
+      ctx.stroke();
+
+      // Top-Right Outer Corner
+      ctx.beginPath();
+      ctx.moveTo(w - margin - cornerLen, margin);
+      ctx.lineTo(w - margin, margin);
+      ctx.lineTo(w - margin, margin + cornerLen);
+      ctx.stroke();
+
+      // Bottom-Left Outer Corner
+      ctx.beginPath();
+      ctx.moveTo(margin, h - margin - cornerLen);
+      ctx.lineTo(margin, h - margin);
+      ctx.lineTo(margin + cornerLen, h - margin);
+      ctx.stroke();
+
+      // Bottom-Right Outer Corner
+      ctx.beginPath();
+      ctx.moveTo(w - margin - cornerLen, h - margin);
+      ctx.lineTo(w - margin, h - margin);
+      ctx.lineTo(w - margin, h - margin - cornerLen);
+      ctx.stroke();
+
+      ctx.restore();
+
+      // 7. Render Top-Right Live REC & Timestamp (Blinking Red/Pink Dot + Timestamp)
+      ctx.save();
+      const recX = w - 190;
+      const recY = 44;
+
+      // Date Timestamp
+      const d = new Date();
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 13px "Space Mono", monospace';
+      ctx.textAlign = "right";
+      ctx.fillText(dateStr, w - 30, recY);
+
+      // Blinking Red Dot
+      const isBlinkOn = Math.floor(now / 500) % 2 === 0;
+      if (isBlinkOn) {
+        ctx.fillStyle = pinkColor;
+        ctx.beginPath();
+        ctx.arc(w - 180, recY - 4, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 16px "Space Mono", monospace';
+      ctx.fillText("REC", w - 130, recY + 1);
+
+      ctx.restore();
     } else {
       // Dark cyber background when camera is off
       const grad = ctx.createLinearGradient(0, 0, w, h);
@@ -203,14 +461,14 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.stroke();
       }
 
-      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.fillStyle = "#ff0055";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM FOR AI FACE DETECTION", w / 2, h / 2);
+      ctx.fillText("START WEBCAM FOR AI SURVEILLANCE DOSSIER", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive]);
+  }, [isCameraActive, subjectId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -229,7 +487,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>AI Face Detection Identity</div>
+        <div className={styles.brandSubtitle}>AI Surveillance Identity</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -269,10 +527,37 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
+        {/* AI Target ID Input */}
+        <div className={styles.sectionHeader}>
+          <span>Target Settings</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Subject ID</span>
+          </div>
+          <input
+            type="text"
+            value={subjectId}
+            onChange={(e) => setSubjectId(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "6px 8px",
+              background: "rgba(0,0,0,0.4)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 4,
+              fontSize: "12px",
+              fontFamily: '"Space Mono", monospace'
+            }}
+          />
+        </div>
+
         {/* AI Face Detection Status Indicator */}
         <div
           style={{
-            background: "rgba(255, 255, 255, 0.05)",
+            background: "rgba(255, 0, 85, 0.1)",
+            border: "1px solid rgba(255, 0, 85, 0.3)",
             borderRadius: "6px",
             padding: "10px 12px",
             marginBottom: 20,
@@ -282,9 +567,9 @@ export const SocialMediaIdentity: React.FC = () => {
             alignItems: "center"
           }}
         >
-          <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Face Detection</span>
-          <span style={{ color: faceDetected ? "#00ff66" : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
-            {faceDetected ? "FACE DETECTED" : "SEARCHING..."}
+          <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>AI Surveillance</span>
+          <span style={{ color: faceDetected ? "#ff0055" : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
+            {faceDetected ? "IDENTIFIED" : "SEARCHING..."}
           </span>
         </div>
       </div>
@@ -300,7 +585,7 @@ export const SocialMediaIdentity: React.FC = () => {
             style={{ display: "none" }}
           />
 
-          {/* Real-time Webcam + AI Green Face Contour Canvas */}
+          {/* Real-time Cyber Surveillance HUD Canvas */}
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
@@ -314,7 +599,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          MediaPipe AI Face Detection • Created by Victor Chen
+          AI Cyber Surveillance Identity HUD • Created by Victor Chen
         </div>
       </div>
     </div>
