@@ -175,7 +175,7 @@ export const SocialMediaIdentity: React.FC = () => {
     hasSnapshotRef.current = true;
   };
 
-  // Export Canvas PNG with Camera Flash effect
+  // Export Canvas PNG with Camera Flash effect (100% Reliable Blob Download)
   const handleExportPNG = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -184,11 +184,18 @@ export const SocialMediaIdentity: React.FC = () => {
     setFlashOpacity(1.0);
     setTimeout(() => setFlashOpacity(0), 350);
 
-    // Download PNG
-    const link = document.createElement("a");
-    link.download = `IMG300_Cyber_Dossier_${subjectId}_${Date.now()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    // Reliable Blob export
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `IMG300_Cyber_Dossier_${subjectId}_${Date.now()}.png`;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, "image/png");
   };
 
   // Main Render Loop (AI Surveillance HUD Pipeline)
@@ -334,17 +341,16 @@ export const SocialMediaIdentity: React.FC = () => {
 
       setIsFistActive(detectedFist);
 
-      // 4. Render Target Tracking Box over Detected Face (Fills ONLY the Face Box on Fist Gesture!)
+      // 4. Render Target Tracking Box over Detected Face (Fills Face Box on Fist Gesture)
       if (detectedBoundingBox) {
         const { x: bX, y: bY, w: bW, h: bH } = detectedBoundingBox;
         const shouldFillFaceBox = detectedFist || manualFaceFill;
 
         ctx.save();
 
-        // Fill Face Bounding Box with Solid HUD Accent Color when Fist Gesture is active!
         if (shouldFillFaceBox) {
           ctx.fillStyle = hudColor;
-          ctx.globalAlpha = 0.55; // 55% vibrant semi-transparent fill
+          ctx.globalAlpha = 0.55;
           ctx.fillRect(bX, bY, bW, bH);
           ctx.globalAlpha = 1.0;
         }
@@ -808,7 +814,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
   // Interactive Mouse Click Handler on Canvas
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!showExportModal || !isCameraActive) return;
+    if (!isCameraActive) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -816,13 +822,13 @@ export const SocialMediaIdentity: React.FC = () => {
     const clickX = ((e.clientX - rect.left) / rect.width) * 1280;
     const clickY = ((e.clientY - rect.top) / rect.height) * 720;
 
-    // Check hit on YES, SNAPSHOT DOSSIER button (btnX: 930..1220, btnY: 590..635)
-    if (clickX >= 930 && clickX <= 1220 && clickY >= 580 && clickY <= 635) {
+    // Check hit on YES, SNAPSHOT DOSSIER button (winX: 914, winY: 500, btnX: 934, btnY: 625)
+    if (showExportModal && clickX >= 914 && clickX <= 1244 && clickY >= 615 && clickY <= 675) {
       handleExportPNG();
     }
 
     // Check hit on Close X button (winX + winW - 30..winX + winW, winY..winY + 30)
-    if (clickX >= 1180 && clickX <= 1220 && clickY >= 460 && clickY <= 490) {
+    if (showExportModal && clickX >= 1180 && clickX <= 1244 && clickY >= 500 && clickY <= 540) {
       setShowExportModal(false);
     }
   };
