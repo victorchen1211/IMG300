@@ -3,13 +3,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
 import {
-  COLOR_PALETTES,
   EXPORT_SIZES,
-  ColorPalette,
   DimensionPreset
 } from "../constants/generatorPresets";
 import { ToolPanel } from "./toolPanel";
-import { IMAGE_FILTERS, MaskLayer, TextLayer } from "./blurAndReveal";
+import { IMAGE_FILTERS, MaskLayer } from "./blurAndReveal";
+import { TextLayer } from "./common";
 
 export const BrandAssetGenerator: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -22,11 +21,11 @@ export const BrandAssetGenerator: React.FC = () => {
   const [blurAmount, setBlurAmount] = useState<number>(14);
   const [overlayOpacity, setOverlayOpacity] = useState<number>(0.4);
 
-  // Multi-Mask Layer System
+  // Multi-Mask Layer System (Default mask enabled)
   const [masks, setMasks] = useState<MaskLayer[]>([
     {
       id: "mask-1",
-      enabled: false,
+      enabled: true,
       width: 450,
       height: 300,
       borderColor: "palette",
@@ -53,8 +52,7 @@ export const BrandAssetGenerator: React.FC = () => {
   ]);
   const [selectedTextId, setSelectedTextId] = useState<string>("text-1");
 
-  // Color & Size Controls
-  const [selectedPaletteKey, setSelectedPaletteKey] = useState<string>("monochrome");
+  // Size Controls
   const [selectedFormat, setSelectedFormat] = useState<string>("portrait34");
 
   // Responsive Viewport Bounds
@@ -69,7 +67,8 @@ export const BrandAssetGenerator: React.FC = () => {
   } | null>(null);
 
   const dimension: DimensionPreset = EXPORT_SIZES[selectedFormat] || EXPORT_SIZES["Portrait 3:4 (1200x1600)"];
-  const currentPalette: ColorPalette = COLOR_PALETTES[selectedPaletteKey] || COLOR_PALETTES.whiteOnDark;
+  const defaultBgColor = "#0d0d12";
+  const defaultStrokeColor = "#ffffff";
 
   // Viewport Observer
   useEffect(() => {
@@ -162,7 +161,7 @@ export const BrandAssetGenerator: React.FC = () => {
     canvas.height = h;
 
     // 1. Draw Background Base
-    ctx.fillStyle = currentPalette.bg;
+    ctx.fillStyle = defaultBgColor;
     ctx.fillRect(0, 0, w, h);
 
     if (bgImage) {
@@ -193,13 +192,13 @@ export const BrandAssetGenerator: React.FC = () => {
     if (overlayEnabled) {
       ctx.save();
       ctx.filter = `blur(${blurAmount}px)`;
-      ctx.fillStyle = currentPalette.stroke;
+      ctx.fillStyle = defaultStrokeColor;
       ctx.globalAlpha = overlayOpacity;
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
     }
 
-    // 3. Render Clarity Rectangle Masks
+    // 3. Render Clarity Rectangle Masks (with strict canvas clipping)
     masks.forEach((m) => {
       if (!m.enabled) return;
 
@@ -208,9 +207,16 @@ export const BrandAssetGenerator: React.FC = () => {
 
       ctx.save();
 
-      // Clear blur under mask to reveal sharp image underneath
+      // Clip drawing strictly to mask bounds so sharp image doesn't overwrite whole canvas!
+      ctx.beginPath();
+      ctx.rect(mX, mY, m.width, m.height);
+      ctx.clip();
+
+      // Clear blur inside mask clipping region
       ctx.clearRect(mX, mY, m.width, m.height);
-      ctx.fillStyle = currentPalette.bg;
+
+      // Draw sharp background
+      ctx.fillStyle = defaultBgColor;
       ctx.fillRect(mX, mY, m.width, m.height);
 
       if (bgImage) {
@@ -239,7 +245,7 @@ export const BrandAssetGenerator: React.FC = () => {
 
       // Draw Mask Bounding Border
       ctx.save();
-      const bColor = m.borderColor === "palette" ? currentPalette.stroke : m.borderColor;
+      const bColor = m.borderColor === "palette" ? defaultStrokeColor : m.borderColor;
       ctx.strokeStyle = bColor;
       ctx.lineWidth = m.borderWidth;
       if (m.borderWidth > 0) {
@@ -269,8 +275,9 @@ export const BrandAssetGenerator: React.FC = () => {
       if (!t.enabled || !t.text.trim()) return;
 
       ctx.save();
-      ctx.fillStyle = currentPalette.stroke;
-      ctx.font = `700 ${t.fontSize}px "Telegraf", system-ui, -apple-system, sans-serif`;
+      ctx.fillStyle = t.color || defaultStrokeColor;
+      const font = t.fontFamily || '"Telegraf", system-ui, sans-serif';
+      ctx.font = `700 ${t.fontSize}px ${font}`;
       ctx.textAlign = t.textAlign;
       ctx.textBaseline = "middle";
 
@@ -288,7 +295,8 @@ export const BrandAssetGenerator: React.FC = () => {
     });
   }, [
     dimension,
-    currentPalette,
+    defaultBgColor,
+    defaultStrokeColor,
     bgImage,
     selectedFilterKey,
     overlayEnabled,
@@ -395,14 +403,14 @@ export const BrandAssetGenerator: React.FC = () => {
     let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
 
     // Background
-    svgContent += `<rect width="${w}" height="${h}" fill="${currentPalette.bg}"/>`;
+    svgContent += `<rect width="${w}" height="${h}" fill="${defaultBgColor}"/>`;
 
     // Render Masks in SVG
     masks.forEach((m) => {
       if (!m.enabled) return;
       const mX = Math.round(m.posX * w - m.width / 2);
       const mY = Math.round(m.posY * h - m.height / 2);
-      const bColor = m.borderColor === "palette" ? currentPalette.stroke : m.borderColor;
+      const bColor = m.borderColor === "palette" ? defaultStrokeColor : m.borderColor;
 
       svgContent += `<rect x="${mX}" y="${mY}" width="${m.width}" height="${m.height}" fill="none" stroke="${bColor}" stroke-width="${m.borderWidth}"/>`;
     });
@@ -422,7 +430,7 @@ export const BrandAssetGenerator: React.FC = () => {
 
       lines.forEach((line, index) => {
         const lineY = tY - totalH / 2 + index * lineHeight + lineHeight / 2;
-        svgContent += `<text x="${tX}" y="${lineY}" font-family="Telegraf, sans-serif" font-size="${t.fontSize}" font-weight="bold" fill="${currentPalette.stroke}" text-anchor="${anchor}" dominant-baseline="middle">${line}</text>`;
+        svgContent += `<text x="${tX}" y="${lineY}" font-family="Telegraf, sans-serif" font-size="${t.fontSize}" font-weight="bold" fill="${t.color || defaultStrokeColor}" text-anchor="${anchor}" dominant-baseline="middle">${line}</text>`;
       });
     });
 
@@ -462,8 +470,6 @@ export const BrandAssetGenerator: React.FC = () => {
         onDeleteText={handleDeleteText}
         onSelectText={(id) => setSelectedTextId(id)}
         onUpdateText={handleUpdateText}
-        selectedPaletteKey={selectedPaletteKey}
-        onSelectPalette={(key) => setSelectedPaletteKey(key)}
         selectedFormat={selectedFormat}
         onSelectFormat={(key) => setSelectedFormat(key)}
         onExportPNG={handleExportPNG}

@@ -4,7 +4,6 @@ import React from "react";
 import styles from "../../app/page.module.scss";
 import {
   ImageUploader,
-  PaletteSelector,
   CanvasSizeSelector,
   ExportControls
 } from "../common";
@@ -14,8 +13,7 @@ import {
   ClarityMaskControl,
   TypographyControl,
   MaskLayer,
-  TextLayer,
-  TextAlignMode
+  TextLayer
 } from "../blurAndReveal";
 
 interface ToolPanelProps {
@@ -44,8 +42,6 @@ interface ToolPanelProps {
   onSelectText: (id: string) => void;
   onUpdateText: (id: string, updates: Partial<TextLayer>) => void;
   // Canvas & Export Props
-  selectedPaletteKey: string;
-  onSelectPalette: (paletteKey: string) => void;
   selectedFormat: string;
   onSelectFormat: (formatKey: string) => void;
   onExportPNG: () => void;
@@ -75,8 +71,6 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
   onDeleteText,
   onSelectText,
   onUpdateText,
-  selectedPaletteKey,
-  onSelectPalette,
   selectedFormat,
   onSelectFormat,
   onExportPNG,
@@ -122,9 +116,6 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
         onSelectText={onSelectText}
         onUpdateText={onUpdateText}
       />
-
-      {/* Color Palette Selector */}
-      <PaletteSelector selectedPaletteKey={selectedPaletteKey} onSelectPalette={onSelectPalette} />
 
       {/* Canvas Size Selector */}
       <CanvasSizeSelector selectedFormat={selectedFormat} onSelectFormat={onSelectFormat} />
