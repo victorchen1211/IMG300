@@ -11,12 +11,23 @@ export interface TextLayer {
   enabled: boolean;
   text: string;
   fontSize: number;
+  fontFamily?: string;
   textAlign: TextAlignMode;
   color: string;
   posX: number; // 0 to 1
   posY: number; // 0 to 1
   behindGlass?: boolean; // Optional: for Glass Effect (true = behind glass pane)
 }
+
+export const FONT_OPTIONS = [
+  { label: "Telegraf (Swiss Grotesk)", value: '"Telegraf", system-ui, sans-serif' },
+  { label: "Inter (Clean Neo-Grotesque)", value: '"Inter", system-ui, sans-serif' },
+  { label: "Playfair Display (Editorial Serif)", value: '"Playfair Display", Georgia, serif' },
+  { label: "Cinzel (Luxury Roman Serif)", value: '"Cinzel", Times, serif' },
+  { label: "Space Mono (Technical Monospace)", value: '"Space Mono", monospace' },
+  { label: "Outfit (Geometric Sans)", value: '"Outfit", system-ui, sans-serif' },
+  { label: "System Sans (Default)", value: 'system-ui, -apple-system, sans-serif' }
+];
 
 interface TypographyControlProps {
   texts: TextLayer[];
@@ -104,6 +115,7 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                   Hint: Drag canvas directly to reposition active text
                 </div>
 
+                {/* Text Content Input */}
                 <textarea
                   rows={3}
                   placeholder="Type custom text..."
@@ -113,7 +125,7 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                     width: "100%",
                     padding: "8px",
                     fontSize: "12px",
-                    fontFamily: '"Telegraf", system-ui, sans-serif',
+                    fontFamily: activeText.fontFamily || '"Telegraf", system-ui, sans-serif',
                     border: "1px solid rgba(255, 255, 255, 0.15)",
                     borderRadius: "4px",
                     background: "rgba(0, 0, 0, 0.4)",
@@ -122,6 +134,33 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                     marginBottom: 10
                   }}
                 />
+
+                {/* Font Family Selection */}
+                <div className={styles.controlGroup}>
+                  <div className={styles.controlHeader}>
+                    <span className={styles.controlLabel}>Font Family</span>
+                  </div>
+                  <select
+                    value={activeText.fontFamily || FONT_OPTIONS[0].value}
+                    onChange={(e) => onUpdateText(activeText.id, { fontFamily: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      background: "rgba(0,0,0,0.4)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 4,
+                      fontSize: "12px",
+                      marginBottom: 10
+                    }}
+                  >
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {/* Font Size */}
                 <div className={styles.controlGroup}>
@@ -139,12 +178,14 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                   />
                 </div>
 
-                {/* Text Color Selection */}
+                {/* Flexible Color Picker & Swatches */}
                 <div className={styles.controlGroup}>
                   <div className={styles.controlHeader}>
                     <span className={styles.controlLabel}>Text Color</span>
+                    <span className={styles.controlValue}>{activeText.color.toUpperCase()}</span>
                   </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 4, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4, marginBottom: 10 }}>
+                    {/* Preset Swatches */}
                     {["#ffffff", "#000000", "#ff3366", "#00e5ff", "#ffcc00"].map((c) => (
                       <button
                         key={c}
@@ -154,11 +195,30 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                           height: 22,
                           borderRadius: "50%",
                           backgroundColor: c,
-                          border: activeText.color === c ? "2px solid #fff" : "1px solid rgba(255,255,255,0.2)",
-                          cursor: "pointer"
+                          border: activeText.color.toLowerCase() === c ? "2px solid #fff" : "1px solid rgba(255,255,255,0.2)",
+                          cursor: "pointer",
+                          padding: 0
                         }}
                       />
                     ))}
+                    {/* Native Custom Color Picker Input */}
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <input
+                        type="color"
+                        value={activeText.color.startsWith("#") ? activeText.color : "#ffffff"}
+                        onChange={(e) => onUpdateText(activeText.id, { color: e.target.value })}
+                        style={{
+                          width: 26,
+                          height: 26,
+                          padding: 0,
+                          border: "none",
+                          borderRadius: "50%",
+                          cursor: "pointer",
+                          background: "none"
+                        }}
+                        title="Custom Color Picker"
+                      />
+                    </div>
                   </div>
                 </div>
 

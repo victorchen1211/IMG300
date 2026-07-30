@@ -500,7 +500,8 @@ export const GlassEffectGenerator: React.FC = () => {
       if (!layer.enabled || !layer.text.trim()) return;
       ctx.save();
       ctx.fillStyle = layer.color || "#ffffff";
-      ctx.font = `700 ${layer.fontSize}px "Telegraf", system-ui, sans-serif`;
+      const font = layer.fontFamily || '"Telegraf", system-ui, sans-serif';
+      ctx.font = `700 ${layer.fontSize}px ${font}`;
       ctx.textAlign = layer.textAlign || "center";
       ctx.textBaseline = "middle";
       const tx = layer.posX * dimension.w;
