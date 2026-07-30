@@ -4,14 +4,6 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
-const HUD_PRESET_COLORS = [
-  "#00ff22", // Neon Lime Green
-  "#ff0055", // Hot Pink / Magenta
-  "#00e5ff", // Cyber Cyan
-  "#ffcc00", // Electric Amber
-  "#ffffff"  // Frosted White
-];
-
 export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -25,7 +17,6 @@ export const SocialMediaIdentity: React.FC = () => {
   const [isMosaicActive, setIsMosaicActive] = useState<boolean>(true);
   const [mosaicSize, setMosaicSize] = useState<number>(18); // Block size in px
   const [glassOpacity, setGlassOpacity] = useState<number>(0.5); // 0.2 ~ 0.8
-  const [accentColor, setAccentColor] = useState<string>("#00e5ff"); // Cyber Cyan default
 
   // Refs for MediaPipe & Animation
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -93,7 +84,7 @@ export const SocialMediaIdentity: React.FC = () => {
     setFaceDetected(false);
   };
 
-  // Render Semi-Transparent Glass Pixel Mosaic over face region
+  // Render Clean Semi-Transparent Glass Pixel Mosaic over face region (No outer frame/borders)
   const renderGlassMosaic = (
     ctx: CanvasRenderingContext2D,
     video: HTMLVideoElement,
@@ -140,7 +131,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
     ctx.save();
 
-    // Loop through mosaic pixel blocks
+    // Loop through mosaic pixel blocks - Clean seamless glass fill
     for (let gy = 0; gy < sampleH; gy++) {
       for (let gx = 0; gx < sampleW; gx++) {
         const idx = (gy * sampleW + gx) * 4;
@@ -151,65 +142,11 @@ export const SocialMediaIdentity: React.FC = () => {
         const posX = boxX + gx * blockW;
         const posY = boxY + gy * blockH;
 
-        // 1. Semi-Transparent Glass Color Fill
+        // Semi-Transparent Glass Color Fill
         ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${glassOpacity})`;
-        ctx.fillRect(posX, posY, blockW - 1, blockH - 1);
-
-        // 2. Subtle Glass Highlight Flare (Top-Left Edge)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-        ctx.fillRect(posX, posY, blockW - 1, 2);
-        ctx.fillRect(posX, posY, 2, blockH - 1);
-
-        // 3. Cyber Glass Outline Frame
-        ctx.strokeStyle = `${accentColor}33`; // 20% alpha accent border
-        ctx.lineWidth = 1;
-        ctx.strokeRect(posX + 0.5, posY + 0.5, blockW - 1, blockH - 1);
+        ctx.fillRect(posX, posY, blockW + 0.5, blockH + 0.5);
       }
     }
-
-    // Outer Target Bounding Box Brackets
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 2;
-    ctx.shadowColor = accentColor;
-    ctx.shadowBlur = 12;
-    ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-    // Corner Brackets
-    const bracket = Math.min(boxW, boxH) * 0.2;
-    ctx.lineWidth = 3.5;
-
-    // Top-Left
-    ctx.beginPath();
-    ctx.moveTo(boxX, boxY + bracket);
-    ctx.lineTo(boxX, boxY);
-    ctx.lineTo(boxX + bracket, boxY);
-    ctx.stroke();
-
-    // Top-Right
-    ctx.beginPath();
-    ctx.moveTo(boxX + boxW - bracket, boxY);
-    ctx.lineTo(boxX + boxW, boxY);
-    ctx.lineTo(boxX + boxW, boxY + bracket);
-    ctx.stroke();
-
-    // Bottom-Left
-    ctx.beginPath();
-    ctx.moveTo(boxX, boxY + bracket);
-    ctx.lineTo(boxX, boxY + boxH);
-    ctx.lineTo(boxX + bracket, boxY + boxH);
-    ctx.stroke();
-
-    // Bottom-Right
-    ctx.beginPath();
-    ctx.moveTo(boxX + boxW - bracket, boxY + boxH);
-    ctx.lineTo(boxX + boxW, boxY + boxH);
-    ctx.lineTo(boxX + boxW, boxY + boxH - bracket);
-    ctx.stroke();
-
-    // Label Badge under Face Box
-    ctx.fillStyle = accentColor;
-    ctx.font = '700 11px "Space Mono", monospace';
-    ctx.fillText("TRANSPARENT GLASS MOSAIC DETECTED", boxX, boxY + boxH + 18);
 
     ctx.restore();
   };
@@ -261,7 +198,7 @@ export const SocialMediaIdentity: React.FC = () => {
             const boxW = Math.min(1, (maxX - minX + padX * 2)) * w;
             const boxH = Math.min(1, (maxY - minY + padY * 2)) * h;
 
-            // 3. Render Semi-Transparent Glass Mosaic over Face
+            // 3. Render Clean Semi-Transparent Glass Mosaic over Face
             if (isMosaicActive) {
               renderGlassMosaic(ctx, video, boxX, boxY, boxW, boxH, w, h);
             }
@@ -297,14 +234,14 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.stroke();
       }
 
-      ctx.fillStyle = accentColor;
+      ctx.fillStyle = "#00ff22";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
       ctx.fillText("START WEBCAM FOR REAL-TIME TRANSPARENT FACE MOSAIC", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, isMosaicActive, mosaicSize, glassOpacity, accentColor]);
+  }, [isCameraActive, isMosaicActive, mosaicSize, glassOpacity]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -376,8 +313,8 @@ export const SocialMediaIdentity: React.FC = () => {
               fontSize: "12px",
               fontWeight: 700,
               color: isMosaicActive ? "#000" : "#fff",
-              background: isMosaicActive ? accentColor : "rgba(255, 255, 255, 0.08)",
-              border: `1px solid ${accentColor}`
+              background: isMosaicActive ? "#00ff22" : "rgba(255, 255, 255, 0.08)",
+              border: "1px solid #00ff22"
             }}
             onClick={() => setIsMosaicActive((prev) => !prev)}
           >
@@ -417,56 +354,11 @@ export const SocialMediaIdentity: React.FC = () => {
           />
         </div>
 
-        {/* Accent Color Palette */}
-        <div className={styles.sectionHeader}>
-          <span>Glow Accent Color</span>
-        </div>
-
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Theme Preset</span>
-            <span className={styles.controlValue}>{accentColor.toUpperCase()}</span>
-          </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, marginBottom: 12 }}>
-            {HUD_PRESET_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setAccentColor(c)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  backgroundColor: c,
-                  border: accentColor.toLowerCase() === c ? "2px solid #fff" : "1px solid rgba(255,255,255,0.2)",
-                  cursor: "pointer",
-                  padding: 0
-                }}
-              />
-            ))}
-            {/* Custom Color Picker */}
-            <input
-              type="color"
-              value={accentColor.startsWith("#") ? accentColor : "#00e5ff"}
-              onChange={(e) => setAccentColor(e.target.value)}
-              style={{
-                width: 26,
-                height: 26,
-                padding: 0,
-                border: "none",
-                borderRadius: "50%",
-                cursor: "pointer",
-                background: "none"
-              }}
-              title="Custom Color Picker"
-            />
-          </div>
-        </div>
-
         {/* Status Indicator */}
         <div
           style={{
-            background: isCameraActive ? `${accentColor}1a` : "rgba(255, 255, 255, 0.05)",
-            border: isCameraActive ? `1px solid ${accentColor}4d` : "1px solid rgba(255, 255, 255, 0.1)",
+            background: isCameraActive ? "rgba(0, 255, 34, 0.1)" : "rgba(255, 255, 255, 0.05)",
+            border: isCameraActive ? "1px solid rgba(0, 255, 34, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
             borderRadius: "6px",
             padding: "12px",
             fontSize: "12px",
@@ -477,13 +369,13 @@ export const SocialMediaIdentity: React.FC = () => {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face AI Tracking</span>
-            <span style={{ color: faceDetected ? accentColor : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
+            <span style={{ color: faceDetected ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
               {faceDetected ? "TRACKED" : "SEARCHING..."}
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Glass Mosaic Mode</span>
-            <span style={{ color: isMosaicActive ? accentColor : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
+            <span style={{ color: isMosaicActive ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
               {isMosaicActive ? "TRANSPARENT" : "DISABLED"}
             </span>
           </div>
