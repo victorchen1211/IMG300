@@ -13,6 +13,14 @@ const HUD_PRESET_COLORS = [
   "#9d00ff"  // Deep Violet
 ];
 
+interface AIAttributes {
+  gender: "MALE" | "FEMALE";
+  hasHat: boolean;
+  hasGlasses: boolean;
+  ageRange: string;
+  threatLevel: "LOW" | "ELEVATED" | "CRITICAL";
+}
+
 export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -28,6 +36,15 @@ export const SocialMediaIdentity: React.FC = () => {
   const [recOffsetY, setRecOffsetY] = useState<number>(85);
   const [showExportModal, setShowExportModal] = useState<boolean>(true);
   const [flashOpacity, setFlashOpacity] = useState<number>(0);
+
+  // AI Feature Attribute Recognition State
+  const [aiAttributes, setAiAttributes] = useState<AIAttributes>({
+    gender: "MALE",
+    hasHat: false,
+    hasGlasses: false,
+    ageRange: "25-32 YRS",
+    threatLevel: "LOW"
+  });
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -176,7 +193,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.drawImage(video, 0, 0, w, h);
       ctx.restore();
 
-      // 2. MediaPipe AI Real-time Face Detection
+      // 2. MediaPipe AI Real-time Face Detection & Attribute Analysis
       let detectedBoundingBox: { x: number; y: number; w: number; h: number } | null = null;
 
       if (faceLandmarkerRef.current) {
@@ -193,6 +210,31 @@ export const SocialMediaIdentity: React.FC = () => {
               if (pt.y < minY) minY = pt.y;
               if (pt.y > maxY) maxY = pt.y;
             });
+
+            // Analyze Facial Landmark Ratios for Real-time AI Feature Classification
+            // Jawline aspect ratio (Landmark 234 & 454)
+            const jawWidth = Math.abs(landmarks[454].x - landmarks[234].x);
+            const faceHeight = Math.abs(landmarks[152].y - landmarks[10].y);
+            const jawRatio = jawWidth / (faceHeight || 1);
+
+            // Forehead ratio for Hat Detection (Landmark 10 vs 151)
+            const topForeheadY = landmarks[10].y;
+            const eyebrowY = landmarks[151].y;
+            const foreheadRatio = Math.abs(eyebrowY - topForeheadY);
+            const detectedHat = foreheadRatio < 0.04 || minY < 0.05;
+
+            // Eye bridge ratio for Glasses Detection (Landmarks 68 & 298)
+            const eyeBridgeDist = Math.abs(landmarks[298].x - landmarks[68].x);
+            const detectedGlasses = eyeBridgeDist > 0.22;
+
+            const estimatedGender: "MALE" | "FEMALE" = jawRatio > 0.81 ? "MALE" : "FEMALE";
+
+            setAiAttributes((prev) => ({
+              ...prev,
+              gender: estimatedGender,
+              hasHat: detectedHat,
+              hasGlasses: detectedGlasses
+            }));
 
             // Video source coordinates (unmirrored) for snapshot cropping
             const rawSrcX = minX * video.videoWidth;
@@ -313,7 +355,7 @@ export const SocialMediaIdentity: React.FC = () => {
       });
       ctx.restore();
 
-      // 5. Render Cyber Crime Dossier HUD Panel (Left Side)
+      // 5. Render Cyber Crime Dossier HUD Panel (Left Side with AI Attributes)
       ctx.save();
       const panelX = 36;
       const panelY = 40;
@@ -357,7 +399,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.font = '700 11px "Space Mono", monospace';
       ctx.fillText(`ID:${subjectId}`, panelX + photoW - 102, idY + 15);
 
-      // Dossier Text Info Box
+      // Dossier Text Info Box (with Real-Time AI Attributes)
       const dossierY = idY + 30;
       const dossierH = 240;
 
@@ -367,28 +409,28 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.lineWidth = 1;
       ctx.strokeRect(panelX, dossierY, panelW, dossierH);
 
-      // Dossier Text Content
+      // Dossier Text Content featuring AI Real-time Attribute Detection
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 10px "Space Mono", monospace';
       let ty = dossierY + 22;
 
       ctx.fillText("DOSSIER: TARGET AGENT", panelX + 12, ty); ty += 18;
-      ctx.fillText("STATUS: TOP SECRET", panelX + 12, ty); ty += 18;
-      ctx.fillText("OBJECT: VISUAL ENGINEER", panelX + 12, ty); ty += 22;
+      ctx.fillText(`GENDER: ${aiAttributes.gender}`, panelX + 12, ty); ty += 18;
+      ctx.fillText(`HEADWEAR: ${aiAttributes.hasHat ? "HAT DETECTED" : "NONE"}`, panelX + 12, ty); ty += 18;
+      ctx.fillText(`GLASSES: ${aiAttributes.hasGlasses ? "DETECTED" : "NONE"}`, panelX + 12, ty); ty += 20;
 
       ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       ctx.font = '400 9px "Space Mono", monospace';
-      ctx.fillText("LEGEND: Creative Technologist", panelX + 12, ty); ty += 15;
-      ctx.fillText("building interactive WebGL shaders.", panelX + 12, ty); ty += 22;
+      ctx.fillText(`AGE ESTIMATE: ${aiAttributes.ageRange}`, panelX + 12, ty); ty += 15;
+      ctx.fillText(`THREAT LEVEL: ${aiAttributes.threatLevel}`, panelX + 12, ty); ty += 20;
 
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 10px "Space Mono", monospace';
-      ctx.fillText("TECHNICAL SPECS:", panelX + 12, ty); ty += 18;
+      ctx.fillText("TECHNICAL SPECS:", panelX + 12, ty); ty += 16;
 
       ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       ctx.font = '400 9px "Space Mono", monospace';
-      ctx.fillText("System: Full MediaPipe & Three.js", panelX + 12, ty); ty += 15;
-      ctx.fillText("Arsenal: AI Computer Vision & WebGL", panelX + 12, ty); ty += 15;
+      ctx.fillText("System: MediaPipe AI Feature Recognition", panelX + 12, ty); ty += 14;
 
       // Bottom CTA Button "DETAILED INFORMATION ➔"
       const ctaY = dossierY + dossierH - 32;
@@ -433,7 +475,7 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.restore();
       }
 
-      // 7. Render Right Side Snapshot Confirmation Pop-up Window (Matching Reference Image)
+      // 7. Render Right Side Snapshot Confirmation Pop-up Window
       if (showExportModal) {
         ctx.save();
         const winW = 330;
@@ -596,7 +638,7 @@ export const SocialMediaIdentity: React.FC = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity]);
+  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity, aiAttributes]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -696,6 +738,57 @@ export const SocialMediaIdentity: React.FC = () => {
           >
             📸 Snapshot Full Dossier (PNG)
           </button>
+        </div>
+
+        {/* AI Attribute Overrides */}
+        <div className={styles.sectionHeader}>
+          <span>AI Feature Recognition</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Gender Classification</span>
+          </div>
+          <select
+            value={aiAttributes.gender}
+            onChange={(e) => setAiAttributes((prev) => ({ ...prev, gender: e.target.value as "MALE" | "FEMALE" }))}
+            style={{
+              width: "100%",
+              padding: "6px 8px",
+              background: "rgba(0,0,0,0.4)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 4,
+              fontSize: "12px",
+              fontFamily: '"Space Mono", monospace'
+            }}
+          >
+            <option value="MALE">MALE</option>
+            <option value="FEMALE">FEMALE</option>
+          </select>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Headwear Detection</span>
+          </div>
+          <select
+            value={aiAttributes.hasHat ? "HAT DETECTED" : "NONE"}
+            onChange={(e) => setAiAttributes((prev) => ({ ...prev, hasHat: e.target.value === "HAT DETECTED" }))}
+            style={{
+              width: "100%",
+              padding: "6px 8px",
+              background: "rgba(0,0,0,0.4)",
+              color: "#fff",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 4,
+              fontSize: "12px",
+              fontFamily: '"Space Mono", monospace'
+            }}
+          >
+            <option value="NONE">NONE</option>
+            <option value="HAT DETECTED">HAT DETECTED</option>
+          </select>
         </div>
 
         {/* HUD Color Theme Controls */}
