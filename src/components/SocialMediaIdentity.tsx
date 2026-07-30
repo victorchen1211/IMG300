@@ -5,11 +5,11 @@ import { FilesetResolver, FaceLandmarker, HandLandmarker } from "@mediapipe/task
 import styles from "../app/page.module.scss";
 
 const HUD_PRESET_COLORS = [
-  "#ff0055", // Hot Pink / Magenta (Default)
+  "#00ff22", // Neon Lime Green (Reference Image Style)
+  "#ff0055", // Hot Pink / Magenta
   "#00e5ff", // Cyber Cyan
   "#ff3b30", // Neon Red
   "#ffcc00", // Electric Amber
-  "#00ff66", // Matrix Green
   "#9d00ff"  // Deep Violet
 ];
 
@@ -33,7 +33,7 @@ export const SocialMediaIdentity: React.FC = () => {
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
-  const [hudColor, setHudColor] = useState<string>("#ff0055");
+  const [hudColor, setHudColor] = useState<string>("#00ff22"); // Neon Lime Green Default matching image
   const [recOffsetY, setRecOffsetY] = useState<number>(85);
   const [showExportModal, setShowExportModal] = useState<boolean>(true);
   const [flashOpacity, setFlashOpacity] = useState<number>(0);
@@ -538,127 +538,62 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 8. Render TWO Right-Side Information HUD Panels (Right Panel 1 & Right Panel 2)
+      // 8. Render Clean Right-Side Two Stacked Solid Green Info Tag Badges (Strictly Matching User Reference Image)
       ctx.save();
-      const rPanelW = 270;
+      const tagW = 320;
+      const tagH = 26;
+      const tagX = w - tagW - 60;
+      const tag1Y = 220;
+      const tag2Y = 254;
 
-      // --- Right HUD Panel 1: Biometric Matrix Analytics ---
-      const rPanel1X = w - rPanelW - 36;
-      const rPanel1Y = 140;
-      const rPanel1H = 125;
-
-      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
-      ctx.fillRect(rPanel1X, rPanel1Y, rPanelW, rPanel1H);
-      ctx.strokeStyle = hudColor;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(rPanel1X, rPanel1Y, rPanelW, rPanel1H);
-
-      // Title Bar 1
+      // --- Tag Badge 1: TOP : YELLOW LONG SLEEVE TEE ---
       ctx.fillStyle = hudColor;
-      ctx.fillRect(rPanel1X, rPanel1Y, rPanelW, 24);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = '700 10px "Space Mono", monospace';
-      ctx.fillText("FACIAL MATRIX ANALYTICS", rPanel1X + 10, rPanel1Y + 16);
+      ctx.fillRect(tagX, tag1Y, tagW, tagH);
+      ctx.fillStyle = "#000000";
+      ctx.font = '800 11px "Space Mono", monospace';
+      ctx.fillText("TOP : YELLOW LONG SLEEVE TEE", tagX + 12, tag1Y + 17);
 
-      let r1y = rPanel1Y + 42;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-      ctx.font = '700 9px "Space Mono", monospace';
-      ctx.fillText("SYMMETRY: 98.6% VERIFIED", rPanel1X + 10, r1y); r1y += 18;
-      ctx.fillText("EXPRESSION: NEUTRAL FOCUS", rPanel1X + 10, r1y); r1y += 18;
-      ctx.fillText("RETINA MATRIX: MATCHED", rPanel1X + 10, r1y); r1y += 18;
-      ctx.fillText("PUPIL DISTANCE: OPTIMAL", rPanel1X + 10, r1y);
-
-      // --- Right HUD Panel 2: Threat Analysis & Behavioral Log ---
-      const rPanel2X = w - rPanelW - 36;
-      const rPanel2Y = 285;
-      const rPanel2H = 120;
-
-      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
-      ctx.fillRect(rPanel2X, rPanel2Y, rPanelW, rPanel2H);
-      ctx.strokeStyle = hudColor;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(rPanel2X, rPanel2Y, rPanelW, rPanel2H);
-
-      // Title Bar 2
+      // --- Tag Badge 2: SHOE : NIKE AIR MAX 95 \"BIG BUBBLE\" ---
       ctx.fillStyle = hudColor;
-      ctx.fillRect(rPanel2X, rPanel2Y, rPanelW, 24);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = '700 10px "Space Mono", monospace';
-      ctx.fillText("BEHAVIORAL & THREAT LOG", rPanel2X + 10, rPanel2Y + 16);
-
-      let r2y = rPanel2Y + 42;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-      ctx.font = '700 9px "Space Mono", monospace';
-      ctx.fillText("LOCK: ACTIVE TARGET LOCK", rPanel2X + 10, r2y); r2y += 18;
-      ctx.fillText("SIGNAL STRENGTH: 99.8%", rPanel2X + 10, r2y); r2y += 18;
-      ctx.fillText("STATUS: CLEAR / NO HOSTILE ACTION", rPanel2X + 10, r2y);
+      ctx.fillRect(tagX, tag2Y, tagW, tagH);
+      ctx.fillStyle = "#000000";
+      ctx.font = '800 11px "Space Mono", monospace';
+      ctx.fillText('SHOE : NIKE AIR MAX 95 "BIG BUBBLE"', tagX + 12, tag2Y + 17);
 
       ctx.restore();
 
-      // 9. Render SOLID Connecting Lines from ALL Panels to Face Box
+      // 9. Render SINGLE Clean Line connecting Right Info Tag Badges to Face Box (Strictly Matching Reference Image)
       if (detectedBoundingBox) {
         ctx.save();
         ctx.strokeStyle = hudColor;
-        ctx.lineWidth = 2.5; // Solid lines!
+        ctx.lineWidth = 2.5;
         ctx.shadowColor = hudColor;
-        ctx.shadowBlur = 10;
-        ctx.setLineDash([]); // 100% Solid line!
+        ctx.shadowBlur = 8;
+        ctx.setLineDash([]); // 100% Solid Single Line!
 
-        // --- Line 1: Left B&W Snapshot Photo -> Top-Left of Face Box ---
-        const leftStartX = panelX + photoW;
-        const leftStartY = photoY + 20;
-        const faceLeftX = detectedBoundingBox.x;
-        const faceLeftY = detectedBoundingBox.y + 20;
+        // Point A: Left-middle point between Tag 1 & Tag 2
+        const tagLineStartX = tagX;
+        const tagLineStartY = tag2Y + 2;
+
+        // Point B: Right-middle edge of Face Box
+        const faceRightEdgeX = detectedBoundingBox.x + detectedBoundingBox.w;
+        const faceRightEdgeY = detectedBoundingBox.y + detectedBoundingBox.h * 0.4;
 
         ctx.beginPath();
-        ctx.moveTo(leftStartX, leftStartY);
-        const midLeftX = leftStartX + (faceLeftX - leftStartX) * 0.45;
-        ctx.lineTo(midLeftX, leftStartY);
-        ctx.lineTo(midLeftX, faceLeftY);
-        ctx.lineTo(faceLeftX, faceLeftY);
+        ctx.moveTo(tagLineStartX, tagLineStartY);
+
+        // Clean elbow polyline path
+        const midPolyX = tagLineStartX - (tagLineStartX - faceRightEdgeX) * 0.4;
+        ctx.lineTo(midPolyX, tagLineStartY);
+        ctx.lineTo(midPolyX, faceRightEdgeY);
+        ctx.lineTo(faceRightEdgeX, faceRightEdgeY);
         ctx.stroke();
 
+        // Glowing node dots
         ctx.fillStyle = hudColor;
         ctx.beginPath();
-        ctx.arc(leftStartX, leftStartY, 4, 0, Math.PI * 2);
-        ctx.arc(faceLeftX, faceLeftY, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // --- Line 2 (NEW): Right HUD Panel 1 -> Top-Right of Face Box ---
-        const r1StartX = rPanel1X;
-        const r1StartY = rPanel1Y + 30;
-        const faceRightX = detectedBoundingBox.x + detectedBoundingBox.w;
-        const faceRightY = detectedBoundingBox.y + 20;
-
-        ctx.beginPath();
-        ctx.moveTo(r1StartX, r1StartY);
-        const midR1X = r1StartX - (r1StartX - faceRightX) * 0.45;
-        ctx.lineTo(midR1X, r1StartY);
-        ctx.lineTo(midR1X, faceRightY);
-        ctx.lineTo(faceRightX, faceRightY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(r1StartX, r1StartY, 4, 0, Math.PI * 2);
-        ctx.arc(faceRightX, faceRightY, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        // --- Line 3 (NEW): Right HUD Panel 2 -> Bottom-Right of Face Box ---
-        const r2StartX = rPanel2X;
-        const r2StartY = rPanel2Y + 30;
-        const faceRightBottomY = detectedBoundingBox.y + detectedBoundingBox.h - 20;
-
-        ctx.beginPath();
-        ctx.moveTo(r2StartX, r2StartY);
-        const midR2X = r2StartX - (r2StartX - faceRightX) * 0.45;
-        ctx.lineTo(midR2X, r2StartY);
-        ctx.lineTo(midR2X, faceRightBottomY);
-        ctx.lineTo(faceRightX, faceRightBottomY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.arc(r2StartX, r2StartY, 4, 0, Math.PI * 2);
-        ctx.arc(faceRightX, faceRightBottomY, 4, 0, Math.PI * 2);
+        ctx.arc(tagLineStartX, tagLineStartY, 3.5, 0, Math.PI * 2);
+        ctx.arc(faceRightEdgeX, faceRightEdgeY, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
@@ -1009,7 +944,7 @@ export const SocialMediaIdentity: React.FC = () => {
             {/* Native Custom Color Picker */}
             <input
               type="color"
-              value={hudColor.startsWith("#") ? hudColor : "#ff0055"}
+              value={hudColor.startsWith("#") ? hudColor : "#00ff22"}
               onChange={(e) => setHudColor(e.target.value)}
               style={{
                 width: 26,
