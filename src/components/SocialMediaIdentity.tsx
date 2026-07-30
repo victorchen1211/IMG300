@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
 export const SocialMediaIdentity: React.FC = () => {
@@ -11,8 +12,41 @@ export const SocialMediaIdentity: React.FC = () => {
   // Control State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
+  // MediaPipe & Animation Refs
+  const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // Load MediaPipe Face Landmarker Tasks Vision Model
+  useEffect(() => {
+    let isMounted = true;
+    const initMediaPipe = async () => {
+      try {
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+        const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numFaces: 1
+        });
+        if (isMounted) {
+          faceLandmarkerRef.current = landmarker;
+        }
+      } catch (err) {
+        console.warn("MediaPipe load warning:", err);
+      }
+    };
+
+    initMediaPipe();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Start Camera Stream
   const startCamera = async () => {
@@ -41,9 +75,10 @@ export const SocialMediaIdentity: React.FC = () => {
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
+    setFaceDetected(false);
   };
 
-  // Render Canvas Loop (Live Video Stream ONLY)
+  // Render Canvas Loop (Webcam Stream + MediaPipe Face Green Bounding Contour)
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -57,12 +92,92 @@ export const SocialMediaIdentity: React.FC = () => {
     ctx.clearRect(0, 0, w, h);
 
     if (isCameraActive && video && video.readyState >= 2) {
+      // 1. Draw Mirrored Live Webcam Feed
       ctx.save();
-      // Mirror canvas horizontally for natural selfie webcam view
       ctx.translate(w, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, w, h);
       ctx.restore();
+
+      // 2. MediaPipe AI Real-time Face Detection
+      if (faceLandmarkerRef.current) {
+        try {
+          const results = faceLandmarkerRef.current.detectForVideo(video, performance.now());
+          if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+            setFaceDetected(true);
+            const landmarks = results.faceLandmarks[0];
+
+            let minX = 1, maxX = 0, minY = 1, maxY = 0;
+            landmarks.forEach((pt) => {
+              if (pt.x < minX) minX = pt.x;
+              if (pt.x > maxX) maxX = pt.x;
+              if (pt.y < minY) minY = pt.y;
+              if (pt.y > maxY) maxY = pt.y;
+            });
+
+            // Mirror X coordinate because canvas is mirrored for natural selfie view
+            const boxX = (1 - maxX) * w;
+            const boxY = minY * h;
+            const boxW = (maxX - minX) * w;
+            const boxH = (maxY - minY) * h;
+
+            // Draw Green Bounding Line / Box around detected face
+            ctx.save();
+            ctx.strokeStyle = "#00ff66";
+            ctx.lineWidth = 3;
+            ctx.shadowColor = "rgba(0, 255, 102, 0.8)";
+            ctx.shadowBlur = 12;
+
+            // Draw Green Bounding Box
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+            // Draw Corner Accents
+            const bracket = Math.min(boxW, boxH) * 0.2;
+            ctx.lineWidth = 5;
+
+            // Top-Left Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX, boxY + bracket);
+            ctx.lineTo(boxX, boxY);
+            ctx.lineTo(boxX + bracket, boxY);
+            ctx.stroke();
+
+            // Top-Right Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW - bracket, boxY);
+            ctx.lineTo(boxX + boxW, boxY);
+            ctx.lineTo(boxX + boxW, boxY + bracket);
+            ctx.stroke();
+
+            // Bottom-Left Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX, boxY + boxH - bracket);
+            ctx.lineTo(boxX, boxY + boxH);
+            ctx.lineTo(boxX + bracket, boxY + boxH);
+            ctx.stroke();
+
+            // Bottom-Right Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW - bracket, boxY + boxH);
+            ctx.lineTo(boxX + boxW, boxY + boxH);
+            ctx.lineTo(boxX + boxW, boxY + boxH - bracket);
+            ctx.stroke();
+
+            // Green Label Badge
+            ctx.fillStyle = "#00ff66";
+            ctx.fillRect(boxX, boxY - 24, 116, 22);
+            ctx.fillStyle = "#000000";
+            ctx.font = '700 11px "Space Mono", monospace';
+            ctx.fillText("FACE DETECTED", boxX + 6, boxY - 8);
+
+            ctx.restore();
+          } else {
+            setFaceDetected(false);
+          }
+        } catch (e) {
+          // Frame skip handling
+        }
+      }
     } else {
       // Dark cyber background when camera is off
       const grad = ctx.createLinearGradient(0, 0, w, h);
@@ -91,7 +206,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW CAMERA FEED", w / 2, h / 2);
+      ctx.fillText("START WEBCAM FOR AI FACE DETECTION", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -114,11 +229,11 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Social Media Identity</div>
+        <div className={styles.brandSubtitle}>AI Face Detection Identity</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
-          <span>Webcam Camera</span>
+          <span>Webcam & AI Detection</span>
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -154,7 +269,7 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* Camera Status Indicator */}
+        {/* AI Face Detection Status Indicator */}
         <div
           style={{
             background: "rgba(255, 255, 255, 0.05)",
@@ -167,9 +282,9 @@ export const SocialMediaIdentity: React.FC = () => {
             alignItems: "center"
           }}
         >
-          <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Camera Feed</span>
-          <span style={{ color: isCameraActive ? "#00ff66" : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
-            {isCameraActive ? "LIVE" : "OFF"}
+          <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Face Detection</span>
+          <span style={{ color: faceDetected ? "#00ff66" : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
+            {faceDetected ? "FACE DETECTED" : "SEARCHING..."}
           </span>
         </div>
       </div>
@@ -185,7 +300,7 @@ export const SocialMediaIdentity: React.FC = () => {
             style={{ display: "none" }}
           />
 
-          {/* Clean Real-time Webcam Canvas */}
+          {/* Real-time Webcam + AI Green Face Contour Canvas */}
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
@@ -199,7 +314,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          Social Media Identity • Created by Victor Chen
+          MediaPipe AI Face Detection • Created by Victor Chen
         </div>
       </div>
     </div>
