@@ -26,6 +26,16 @@ const CARDS: CardData[] = [
     shares: 6
   },
   {
+    id: "social-media-identity",
+    title: "Social Media Identity",
+    author: "Created By Victor Chen",
+    href: "/social-media-identity",
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80",
+    likes: 18,
+    remixes: 410,
+    shares: 25
+  },
+  {
     id: "halftone-matrix",
     title: "Halftone Matrix",
     author: "Created By Victor Chen",
