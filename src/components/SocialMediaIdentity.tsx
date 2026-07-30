@@ -26,6 +26,8 @@ export const SocialMediaIdentity: React.FC = () => {
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
   const [hudColor, setHudColor] = useState<string>("#ff0055");
   const [recOffsetY, setRecOffsetY] = useState<number>(85);
+  const [showExportModal, setShowExportModal] = useState<boolean>(true);
+  const [flashOpacity, setFlashOpacity] = useState<number>(0);
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -134,6 +136,22 @@ export const SocialMediaIdentity: React.FC = () => {
     }
 
     hasSnapshotRef.current = true;
+  };
+
+  // Export Canvas PNG with Camera Flash effect
+  const handleExportPNG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Trigger white flash animation
+    setFlashOpacity(1.0);
+    setTimeout(() => setFlashOpacity(0), 350);
+
+    // Download PNG
+    const link = document.createElement("a");
+    link.download = `IMG300_Cyber_Dossier_${subjectId}_${Date.now()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
   };
 
   // Main Render Loop (AI Surveillance HUD Pipeline)
@@ -394,19 +412,17 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.lineWidth = 1.5;
         ctx.shadowColor = hudColor;
         ctx.shadowBlur = 8;
-        ctx.setLineDash([6, 4]); // Cyber dashed line
+        ctx.setLineDash([6, 4]);
 
         ctx.beginPath();
         ctx.moveTo(startX, startY);
 
-        // Elbow polyline path
         const midX = startX + (targetX - startX) * 0.45;
         ctx.lineTo(midX, startY);
         ctx.lineTo(midX, targetY);
         ctx.lineTo(targetX, targetY);
         ctx.stroke();
 
-        // Connection glowing dots at both ends
         ctx.setLineDash([]);
         ctx.fillStyle = hudColor;
         ctx.beginPath();
@@ -417,35 +433,92 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.restore();
       }
 
-      // 7. Render Viewport Outer Four Corner Brackets (Dynamic HUD Color L-shaped right angles)
+      // 7. Render Right Side Snapshot Confirmation Pop-up Window (Matching Reference Image)
+      if (showExportModal) {
+        ctx.save();
+        const winW = 330;
+        const winH = 200;
+        const winX = w - winW - 36;
+        const winY = h - winH - 40;
+
+        // Window Background & Glass Tint
+        ctx.fillStyle = "rgba(10, 10, 16, 0.9)";
+        ctx.fillRect(winX, winY, winW, winH);
+        ctx.strokeStyle = hudColor;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(winX, winY, winW, winH);
+
+        // Header Title Bar
+        ctx.fillStyle = hudColor;
+        ctx.fillRect(winX, winY, winW, 30);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = '700 11px "Space Mono", monospace';
+        ctx.fillText("DOSSIER #08-V/PURPLE", winX + 12, winY + 20);
+
+        // Close X Button
+        ctx.font = '700 14px "Space Mono", monospace';
+        ctx.fillText("✕", winX + winW - 20, winY + 20);
+
+        // Subtitle Text inside window
+        ctx.fillStyle = "#ffffff";
+        ctx.font = '700 10px "Space Mono", monospace';
+        let wy = winY + 52;
+        ctx.fillText("STATUS: CONFIDENTIAL TOP SECRET", winX + 12, wy); wy += 20;
+
+        ctx.fillStyle = hudColor;
+        ctx.font = '400 9px "Space Mono", monospace';
+        ctx.fillText("SNAPSHOT HIGH-RES SURVEILLANCE DOSSIER?", winX + 12, wy);
+
+        // Action Confirmation Button "YES, SNAPSHOT DOSSIER"
+        const btnW = 290;
+        const btnH = 42;
+        const btnX = winX + 20;
+        const btnY = winY + 130;
+
+        ctx.fillStyle = hudColor;
+        ctx.fillRect(btnX, btnY, btnW, btnH);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(btnX + 2, btnY + 2, btnW - 4, btnH - 4);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = '700 12px "Space Mono", monospace';
+        ctx.textAlign = "center";
+        ctx.fillText("YES, SNAPSHOT DOSSIER (PNG)", btnX + btnW / 2, btnY + 26);
+
+        ctx.restore();
+      }
+
+      // 8. Render Viewport Outer Four Corner Brackets
       ctx.save();
       ctx.strokeStyle = hudColor;
       ctx.lineWidth = 4;
       const margin = 20;
       const cornerLen = 50;
 
-      // Top-Left Outer Corner
+      // Top-Left
       ctx.beginPath();
       ctx.moveTo(margin, margin + cornerLen);
       ctx.lineTo(margin, margin);
       ctx.lineTo(margin + cornerLen, margin);
       ctx.stroke();
 
-      // Top-Right Outer Corner
+      // Top-Right
       ctx.beginPath();
       ctx.moveTo(w - margin - cornerLen, margin);
       ctx.lineTo(w - margin, margin);
       ctx.lineTo(w - margin, margin + cornerLen);
       ctx.stroke();
 
-      // Bottom-Left Outer Corner
+      // Bottom-Left
       ctx.beginPath();
       ctx.moveTo(margin, h - margin - cornerLen);
       ctx.lineTo(margin, h - margin);
       ctx.lineTo(margin + cornerLen, h - margin);
       ctx.stroke();
 
-      // Bottom-Right Outer Corner
+      // Bottom-Right
       ctx.beginPath();
       ctx.moveTo(w - margin - cornerLen, h - margin);
       ctx.lineTo(w - margin, h - margin);
@@ -454,7 +527,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 8. Render Top-Right Live REC & Timestamp (Two-line layout matching reference image)
+      // 9. Render Top-Right Live REC & Timestamp
       ctx.save();
       const timestampY = recOffsetY;
       const recY = recOffsetY + 28;
@@ -516,8 +589,14 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillText("START WEBCAM FOR AI SURVEILLANCE DOSSIER", w / 2, h / 2);
     }
 
+    // Render Camera Flash effect layer if triggered
+    if (flashOpacity > 0) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${flashOpacity})`;
+      ctx.fillRect(0, 0, w, h);
+    }
+
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, subjectId, hudColor, recOffsetY]);
+  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -530,6 +609,27 @@ export const SocialMediaIdentity: React.FC = () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
   }, [renderLoop]);
+
+  // Interactive Mouse Click Handler on Canvas
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!showExportModal || !isCameraActive) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * 1280;
+    const clickY = ((e.clientY - rect.top) / rect.height) * 720;
+
+    // Check hit on YES, SNAPSHOT DOSSIER button (btnX: 930..1220, btnY: 590..635)
+    if (clickX >= 930 && clickX <= 1220 && clickY >= 580 && clickY <= 635) {
+      handleExportPNG();
+    }
+
+    // Check hit on Close X button (winX + winW - 30..winX + winW, winY..winY + 30)
+    if (clickX >= 1180 && clickX <= 1220 && clickY >= 460 && clickY <= 490) {
+      setShowExportModal(false);
+    }
+  };
 
   return (
     <div className={styles.appContainer} style={{ background: "#0a0a0f", minHeight: "100vh" }}>
@@ -574,6 +674,28 @@ export const SocialMediaIdentity: React.FC = () => {
               {cameraError}
             </div>
           )}
+        </div>
+
+        {/* Export Snapshot Action Section */}
+        <div className={styles.sectionHeader}>
+          <span>Export Snapshot</span>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <button
+            className="primary"
+            style={{
+              width: "100%",
+              padding: "10px",
+              fontSize: "12px",
+              fontWeight: 700,
+              background: hudColor,
+              borderColor: hudColor
+            }}
+            onClick={handleExportPNG}
+          >
+            📸 Snapshot Full Dossier (PNG)
+          </button>
         </div>
 
         {/* HUD Color Theme Controls */}
@@ -699,11 +821,13 @@ export const SocialMediaIdentity: React.FC = () => {
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
+            onClick={handleCanvasClick}
             style={{
               maxWidth: "100%",
               maxHeight: "100%",
               borderRadius: "8px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
+              boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+              cursor: "pointer"
             }}
           />
         </div>
