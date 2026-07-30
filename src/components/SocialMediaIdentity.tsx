@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
+import { FilesetResolver, FaceLandmarker, HandLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
 const HUD_PRESET_COLORS = [
@@ -31,6 +31,7 @@ export const SocialMediaIdentity: React.FC = () => {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
+  const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
   const [hudColor, setHudColor] = useState<string>("#ff0055");
   const [recOffsetY, setRecOffsetY] = useState<number>(85);
@@ -48,11 +49,12 @@ export const SocialMediaIdentity: React.FC = () => {
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
+  const handLandmarkerRef = useRef<HandLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const hasSnapshotRef = useRef<boolean>(false);
   const lastSnapshotTimeRef = useRef<number>(0);
 
-  // Initialize MediaPipe Face Landmarker
+  // Initialize MediaPipe Face & Hand Landmarkers
   useEffect(() => {
     let isMounted = true;
     const initMediaPipe = async () => {
@@ -60,7 +62,9 @@ export const SocialMediaIdentity: React.FC = () => {
         const filesetResolver = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
-        const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+
+        // Face Landmarker Model
+        const faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
             delegate: "GPU"
@@ -68,8 +72,20 @@ export const SocialMediaIdentity: React.FC = () => {
           runningMode: "VIDEO",
           numFaces: 1
         });
+
+        // Hand Landmarker Model for AI Hand Tracking & Bounding Box
+        const handLandmarker = await HandLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numHands: 2
+        });
+
         if (isMounted) {
-          faceLandmarkerRef.current = landmarker;
+          faceLandmarkerRef.current = faceLandmarker;
+          handLandmarkerRef.current = handLandmarker;
         }
       } catch (err) {
         console.warn("MediaPipe load warning:", err);
@@ -110,6 +126,7 @@ export const SocialMediaIdentity: React.FC = () => {
     }
     setIsCameraActive(false);
     setFaceDetected(false);
+    setHandsDetectedCount(0);
     hasSnapshotRef.current = false;
   };
 
@@ -211,19 +228,16 @@ export const SocialMediaIdentity: React.FC = () => {
               if (pt.y > maxY) maxY = pt.y;
             });
 
-            // Analyze Facial Landmark Ratios for Real-time AI Feature Classification
-            // Jawline aspect ratio (Landmark 234 & 454)
+            // Analyze Facial Landmark Ratios
             const jawWidth = Math.abs(landmarks[454].x - landmarks[234].x);
             const faceHeight = Math.abs(landmarks[152].y - landmarks[10].y);
             const jawRatio = jawWidth / (faceHeight || 1);
 
-            // Forehead ratio for Hat Detection (Landmark 10 vs 151)
             const topForeheadY = landmarks[10].y;
             const eyebrowY = landmarks[151].y;
             const foreheadRatio = Math.abs(eyebrowY - topForeheadY);
             const detectedHat = foreheadRatio < 0.04 || minY < 0.05;
 
-            // Eye bridge ratio for Glasses Detection (Landmarks 68 & 298)
             const eyeBridgeDist = Math.abs(landmarks[298].x - landmarks[68].x);
             const detectedGlasses = eyeBridgeDist > 0.22;
 
@@ -263,7 +277,39 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 3. Render Target Tracking Box over Detected Face (Dynamic Accent Color)
+      // 3. MediaPipe AI Real-time Hand Detection
+      const detectedHandBoxes: { x: number; y: number; w: number; h: number }[] = [];
+      if (handLandmarkerRef.current) {
+        try {
+          const handResults = handLandmarkerRef.current.detectForVideo(video, now);
+          if (handResults.landmarks && handResults.landmarks.length > 0) {
+            setHandsDetectedCount(handResults.landmarks.length);
+            handResults.landmarks.forEach((handPoints) => {
+              let hMinX = 1, hMaxX = 0, hMinY = 1, hMaxY = 0;
+              handPoints.forEach((pt) => {
+                if (pt.x < hMinX) hMinX = pt.x;
+                if (pt.x > hMaxX) hMaxX = pt.x;
+                if (pt.y < hMinY) hMinY = pt.y;
+                if (pt.y > hMaxY) hMaxY = pt.y;
+              });
+
+              const hPad = 0.02;
+              const hBoxX = Math.max(0, (1 - hMaxX - hPad)) * w;
+              const hBoxY = Math.max(0, (hMinY - hPad)) * h;
+              const hBoxW = Math.min(1, (hMaxX - hMinX + hPad * 2)) * w;
+              const hBoxH = Math.min(1, (hMaxY - hMinY + hPad * 2)) * h;
+
+              detectedHandBoxes.push({ x: hBoxX, y: hBoxY, w: hBoxW, h: hBoxH });
+            });
+          } else {
+            setHandsDetectedCount(0);
+          }
+        } catch (e) {
+          // Hand frame skip
+        }
+      }
+
+      // 4. Render Target Tracking Box over Detected Face
       if (detectedBoundingBox) {
         const { x: bX, y: bY, w: bW, h: bH } = detectedBoundingBox;
         ctx.save();
@@ -314,7 +360,57 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.restore();
       }
 
-      // 4. Render Auxiliary Cyber White Bracket Reticles [ ] in Scene
+      // 5. Render Target Bounding Boxes around Detected Hands
+      detectedHandBoxes.forEach((hBox, idx) => {
+        ctx.save();
+        ctx.strokeStyle = hudColor;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = hudColor;
+        ctx.shadowBlur = 10;
+        ctx.strokeRect(hBox.x, hBox.y, hBox.w, hBox.h);
+
+        // Corner Brackets for Hand Box
+        const hBracket = Math.min(hBox.w, hBox.h) * 0.25;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = hudColor;
+
+        // Top-Left
+        ctx.beginPath();
+        ctx.moveTo(hBox.x, hBox.y + hBracket);
+        ctx.lineTo(hBox.x, hBox.y);
+        ctx.lineTo(hBox.x + hBracket, hBox.y);
+        ctx.stroke();
+
+        // Top-Right
+        ctx.beginPath();
+        ctx.moveTo(hBox.x + hBox.w - hBracket, hBox.y);
+        ctx.lineTo(hBox.x + hBox.w, hBox.y);
+        ctx.lineTo(hBox.x + hBox.w, hBox.y + hBracket);
+        ctx.stroke();
+
+        // Bottom-Left
+        ctx.beginPath();
+        ctx.moveTo(hBox.x, hBox.y + hBox.h - hBracket);
+        ctx.lineTo(hBox.x, hBox.y + hBox.h);
+        ctx.lineTo(hBox.x + hBracket, hBox.y + hBox.h);
+        ctx.stroke();
+
+        // Bottom-Right
+        ctx.beginPath();
+        ctx.moveTo(hBox.x + hBox.w - hBracket, hBox.y + hBox.h);
+        ctx.lineTo(hBox.x + hBox.w, hBox.y + hBox.h);
+        ctx.lineTo(hBox.x + hBox.w, hBox.y + hBox.h - hBracket);
+        ctx.stroke();
+
+        // Label Badge under Hand Box
+        ctx.fillStyle = hudColor;
+        ctx.font = '700 10px "Space Mono", monospace';
+        ctx.fillText(`HAND TRACKED #${idx + 1}`, hBox.x, hBox.y + hBox.h + 15);
+
+        ctx.restore();
+      });
+
+      // 6. Render Auxiliary Cyber White Bracket Reticles [ ] in Scene
       ctx.save();
       ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
       ctx.lineWidth = 2;
@@ -355,7 +451,7 @@ export const SocialMediaIdentity: React.FC = () => {
       });
       ctx.restore();
 
-      // 5. Render Cyber Crime Dossier HUD Panel (Left Side with AI Attributes)
+      // 7. Render Cyber Crime Dossier HUD Panel (Left Side)
       ctx.save();
       const panelX = 36;
       const panelY = 40;
@@ -417,7 +513,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillText("DOSSIER: TARGET AGENT", panelX + 12, ty); ty += 18;
       ctx.fillText(`GENDER: ${aiAttributes.gender}`, panelX + 12, ty); ty += 18;
       ctx.fillText(`HEADWEAR: ${aiAttributes.hasHat ? "HAT DETECTED" : "NONE"}`, panelX + 12, ty); ty += 18;
-      ctx.fillText(`GLASSES: ${aiAttributes.hasGlasses ? "DETECTED" : "NONE"}`, panelX + 12, ty); ty += 20;
+      ctx.fillText(`HANDS: ${handsDetectedCount > 0 ? `${handsDetectedCount} TRACKED` : "NONE"}`, panelX + 12, ty); ty += 20;
 
       ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       ctx.font = '400 9px "Space Mono", monospace';
@@ -430,7 +526,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       ctx.font = '400 9px "Space Mono", monospace';
-      ctx.fillText("System: MediaPipe AI Feature Recognition", panelX + 12, ty); ty += 14;
+      ctx.fillText("System: MediaPipe Face & Hand AI", panelX + 12, ty); ty += 14;
 
       // Bottom CTA Button "DETAILED INFORMATION ➔"
       const ctaY = dossierY + dossierH - 32;
@@ -442,7 +538,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 6. Render Connecting Cyber Wire Line between B&W Photo Snapshot & Target Face Box
+      // 8. Render Connecting Cyber Wire Line between B&W Photo Snapshot & Target Face Box
       if (detectedBoundingBox) {
         ctx.save();
         const startX = panelX + photoW;
@@ -475,7 +571,7 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.restore();
       }
 
-      // 7. Render Right Side Snapshot Confirmation Pop-up Window
+      // 9. Render Right Side Snapshot Confirmation Pop-up Window
       if (showExportModal) {
         ctx.save();
         const winW = 330;
@@ -532,7 +628,7 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.restore();
       }
 
-      // 8. Render Viewport Outer Four Corner Brackets
+      // 10. Render Viewport Outer Four Corner Brackets
       ctx.save();
       ctx.strokeStyle = hudColor;
       ctx.lineWidth = 4;
@@ -569,7 +665,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 9. Render Top-Right Live REC & Timestamp
+      // 11. Render Top-Right Live REC & Timestamp
       ctx.save();
       const timestampY = recOffsetY;
       const recY = recOffsetY + 28;
@@ -638,7 +734,7 @@ export const SocialMediaIdentity: React.FC = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity, aiAttributes]);
+  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity, aiAttributes, handsDetectedCount]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -878,7 +974,7 @@ export const SocialMediaIdentity: React.FC = () => {
           />
         </div>
 
-        {/* AI Face Detection Status Indicator */}
+        {/* AI Face & Hand Detection Status Indicator */}
         <div
           style={{
             background: `${hudColor}1a`,
@@ -888,14 +984,22 @@ export const SocialMediaIdentity: React.FC = () => {
             marginBottom: 20,
             fontSize: "12px",
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center"
+            flexDirection: "column",
+            gap: "6px"
           }}
         >
-          <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>AI Surveillance</span>
-          <span style={{ color: faceDetected ? hudColor : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
-            {faceDetected ? "IDENTIFIED" : "SEARCHING..."}
-          </span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Detection</span>
+            <span style={{ color: faceDetected ? hudColor : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
+              {faceDetected ? "IDENTIFIED" : "SEARCHING..."}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Hand Tracking</span>
+            <span style={{ color: handsDetectedCount > 0 ? hudColor : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
+              {handsDetectedCount > 0 ? `${handsDetectedCount} HANDS TRACKED` : "NONE"}
+            </span>
+          </div>
         </div>
       </div>
 
