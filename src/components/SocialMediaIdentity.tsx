@@ -25,7 +25,7 @@ export const SocialMediaIdentity: React.FC = () => {
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
   const [hudColor, setHudColor] = useState<string>("#ff0055");
-  const [recOffsetY, setRecOffsetY] = useState<number>(75); // Moved down to 75px
+  const [recOffsetY, setRecOffsetY] = useState<number>(85); // Moved down cleanly
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -419,33 +419,35 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 7. Render Top-Right Live REC & Timestamp (Moved Down to recOffsetY)
+      // 7. Render Top-Right Live REC & Timestamp (Two-line layout matching reference image)
       ctx.save();
-      const recY = recOffsetY;
+      const timestampY = recOffsetY;
+      const recY = recOffsetY + 28;
 
-      // Date Timestamp
+      // Line 1: Date Timestamp
       const d = new Date();
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = '700 13px "Space Mono", monospace';
+      ctx.font = '700 14px "Space Mono", monospace';
       ctx.textAlign = "right";
-      ctx.fillText(dateStr, w - 30, recY);
+      ctx.fillText(dateStr, w - 40, timestampY);
 
-      // Blinking Red/HUD Color Dot
+      // Line 2: Blinking Red/HUD Color Dot + REC Text
       const isBlinkOn = Math.floor(now / 500) % 2 === 0;
       if (isBlinkOn) {
         ctx.fillStyle = hudColor;
         ctx.shadowColor = hudColor;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(w - 180, recY - 4, 7, 0, Math.PI * 2);
+        ctx.arc(w - 95, recY - 5, 7, 0, Math.PI * 2);
         ctx.fill();
       }
 
       ctx.fillStyle = "#ffffff";
-      ctx.font = '700 16px "Space Mono", monospace';
-      ctx.fillText("REC", w - 130, recY + 1);
+      ctx.font = '700 18px "Space Mono", monospace';
+      ctx.textAlign = "right";
+      ctx.fillText("REC", w - 40, recY);
 
       ctx.restore();
     } else {
@@ -584,16 +586,16 @@ export const SocialMediaIdentity: React.FC = () => {
           </div>
         </div>
 
-        {/* REC Indicator Position Y Slider */}
+        {/* REC & Timestamp Position Y Slider */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>REC Y Position</span>
+            <span className={styles.controlLabel}>HUD Header Y Position</span>
             <span className={styles.controlValue}>{recOffsetY}px</span>
           </div>
           <input
             type="range"
             min={40}
-            max={150}
+            max={250}
             step={2}
             value={recOffsetY}
             onChange={(e) => setRecOffsetY(parseInt(e.target.value))}
