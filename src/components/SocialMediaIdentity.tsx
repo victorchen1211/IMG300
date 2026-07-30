@@ -25,7 +25,7 @@ export const SocialMediaIdentity: React.FC = () => {
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
   const [hudColor, setHudColor] = useState<string>("#ff0055");
-  const [recOffsetY, setRecOffsetY] = useState<number>(85); // Moved down cleanly
+  const [recOffsetY, setRecOffsetY] = useState<number>(85);
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -382,7 +382,42 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 6. Render Viewport Outer Four Corner Brackets (Dynamic HUD Color L-shaped right angles)
+      // 6. Render Connecting Cyber Wire Line between B&W Photo Snapshot & Target Face Box
+      if (detectedBoundingBox) {
+        ctx.save();
+        const startX = panelX + photoW;
+        const startY = photoY + 20;
+        const targetX = detectedBoundingBox.x;
+        const targetY = detectedBoundingBox.y + 20;
+
+        ctx.strokeStyle = hudColor;
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = hudColor;
+        ctx.shadowBlur = 8;
+        ctx.setLineDash([6, 4]); // Cyber dashed line
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+
+        // Elbow polyline path
+        const midX = startX + (targetX - startX) * 0.45;
+        ctx.lineTo(midX, startY);
+        ctx.lineTo(midX, targetY);
+        ctx.lineTo(targetX, targetY);
+        ctx.stroke();
+
+        // Connection glowing dots at both ends
+        ctx.setLineDash([]);
+        ctx.fillStyle = hudColor;
+        ctx.beginPath();
+        ctx.arc(startX, startY, 4, 0, Math.PI * 2);
+        ctx.arc(targetX, targetY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      // 7. Render Viewport Outer Four Corner Brackets (Dynamic HUD Color L-shaped right angles)
       ctx.save();
       ctx.strokeStyle = hudColor;
       ctx.lineWidth = 4;
@@ -419,7 +454,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 7. Render Top-Right Live REC & Timestamp (Two-line layout matching reference image)
+      // 8. Render Top-Right Live REC & Timestamp (Two-line layout matching reference image)
       ctx.save();
       const timestampY = recOffsetY;
       const recY = recOffsetY + 28;
