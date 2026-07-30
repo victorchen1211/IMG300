@@ -32,8 +32,6 @@ export const SocialMediaIdentity: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
-  const [isFistActive, setIsFistActive] = useState<boolean>(false);
-  const [manualFaceFill, setManualFaceFill] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
   const [hudColor, setHudColor] = useState<string>("#00ff22"); // Neon Lime Green Default
   const [recOffsetY, setRecOffsetY] = useState<number>(85);
@@ -75,7 +73,7 @@ export const SocialMediaIdentity: React.FC = () => {
           numFaces: 1
         });
 
-        // Hand Landmarker Model for AI Hand & Fist Tracking
+        // Hand Landmarker Model for AI Hand Tracking
         const handLandmarker = await HandLandmarker.createFromOptions(filesetResolver, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
@@ -129,7 +127,6 @@ export const SocialMediaIdentity: React.FC = () => {
     setIsCameraActive(false);
     setFaceDetected(false);
     setHandsDetectedCount(0);
-    setIsFistActive(false);
     hasSnapshotRef.current = false;
   };
 
@@ -287,9 +284,8 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 3. MediaPipe AI Real-time Hand Detection & Fist Gesture Recognition
+      // 3. MediaPipe AI Real-time Hand Detection
       const detectedHandBoxes: { x: number; y: number; w: number; h: number }[] = [];
-      let detectedFist = false;
 
       if (handLandmarkerRef.current) {
         try {
@@ -305,23 +301,6 @@ export const SocialMediaIdentity: React.FC = () => {
                 if (pt.y < hMinY) hMinY = pt.y;
                 if (pt.y > hMaxY) hMaxY = pt.y;
               });
-
-              // Check Fist Gesture: finger tips close to wrist relative to palm size
-              const wrist = handPoints[0];
-              const palmDist = Math.hypot(handPoints[9].x - wrist.x, handPoints[9].y - wrist.y);
-              const indexDist = Math.hypot(handPoints[8].x - wrist.x, handPoints[8].y - wrist.y);
-              const middleDist = Math.hypot(handPoints[12].x - wrist.x, handPoints[12].y - wrist.y);
-              const ringDist = Math.hypot(handPoints[16].x - wrist.x, handPoints[16].y - wrist.y);
-              const pinkyDist = Math.hypot(handPoints[20].x - wrist.x, handPoints[20].y - wrist.y);
-
-              if (
-                indexDist < palmDist * 1.3 &&
-                middleDist < palmDist * 1.3 &&
-                ringDist < palmDist * 1.3 &&
-                pinkyDist < palmDist * 1.3
-              ) {
-                detectedFist = true;
-              }
 
               const hPad = 0.02;
               const hBoxX = Math.max(0, (1 - hMaxX - hPad)) * w;
@@ -339,22 +318,11 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      setIsFistActive(detectedFist);
-
-      // 4. Render Target Tracking Box over Detected Face (Fills Face Box on Fist Gesture)
+      // 4. Render Target Tracking Box over Detected Face
       if (detectedBoundingBox) {
         const { x: bX, y: bY, w: bW, h: bH } = detectedBoundingBox;
-        const shouldFillFaceBox = detectedFist || manualFaceFill;
 
         ctx.save();
-
-        if (shouldFillFaceBox) {
-          ctx.fillStyle = hudColor;
-          ctx.globalAlpha = 0.55;
-          ctx.fillRect(bX, bY, bW, bH);
-          ctx.globalAlpha = 1.0;
-        }
-
         ctx.strokeStyle = hudColor;
         ctx.lineWidth = 2;
         ctx.shadowColor = hudColor;
@@ -397,7 +365,7 @@ export const SocialMediaIdentity: React.FC = () => {
         // Tag under box
         ctx.fillStyle = hudColor;
         ctx.font = '700 10px "Space Mono", monospace';
-        ctx.fillText(shouldFillFaceBox ? "Subject Identified [FIST FILLED]" : "Subject Identified", bX, bY + bH + 16);
+        ctx.fillText("Subject Identified", bX, bY + bH + 16);
 
         ctx.restore();
       }
@@ -447,7 +415,7 @@ export const SocialMediaIdentity: React.FC = () => {
         // Label Badge under Hand Box
         ctx.fillStyle = hudColor;
         ctx.font = '700 10px "Space Mono", monospace';
-        ctx.fillText(detectedFist ? "✊ FIST GESTURE" : `HAND TRACKED #${idx + 1}`, hBox.x, hBox.y + hBox.h + 15);
+        ctx.fillText(`HAND TRACKED #${idx + 1}`, hBox.x, hBox.y + hBox.h + 15);
 
         ctx.restore();
       });
@@ -555,7 +523,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillText("DOSSIER: TARGET AGENT", panelX + 12, ty); ty += 18;
       ctx.fillText(`GENDER: ${aiAttributes.gender}`, panelX + 12, ty); ty += 18;
       ctx.fillText(`HEADWEAR: ${aiAttributes.hasHat ? "HAT DETECTED" : "NONE"}`, panelX + 12, ty); ty += 18;
-      ctx.fillText(`GESTURE: ${detectedFist || manualFaceFill ? "✊ FIST (FACE FILLED)" : "NORMAL"}`, panelX + 12, ty); ty += 20;
+      ctx.fillText(`HANDS: ${handsDetectedCount > 0 ? `${handsDetectedCount} TRACKED` : "NONE"}`, panelX + 12, ty); ty += 20;
 
       ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       ctx.font = '400 9px "Space Mono", monospace';
@@ -798,7 +766,7 @@ export const SocialMediaIdentity: React.FC = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity, aiAttributes, handsDetectedCount, manualFaceFill]);
+  }, [isCameraActive, subjectId, hudColor, recOffsetY, showExportModal, flashOpacity, aiAttributes, handsDetectedCount]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -876,28 +844,6 @@ export const SocialMediaIdentity: React.FC = () => {
               {cameraError}
             </div>
           )}
-        </div>
-
-        {/* Fist Gesture & Face Box Fill Section */}
-        <div className={styles.sectionHeader}>
-          <span>Fist Gesture Face Fill</span>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <button
-            style={{
-              width: "100%",
-              padding: "9px",
-              fontSize: "12px",
-              fontWeight: 700,
-              color: manualFaceFill ? "#000" : "#fff",
-              background: manualFaceFill ? hudColor : "rgba(255, 255, 255, 0.08)",
-              border: `1px solid ${hudColor}`
-            }}
-            onClick={() => setManualFaceFill((prev) => !prev)}
-          >
-            ✊ {manualFaceFill ? "Face Box Fill ON" : "Toggle Face Fill (or Fist ✊)"}
-          </button>
         </div>
 
         {/* Export Snapshot Action Section */}
@@ -1081,9 +1027,9 @@ export const SocialMediaIdentity: React.FC = () => {
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Fist Face Fill</span>
-            <span style={{ color: isFistActive || manualFaceFill ? hudColor : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
-              {isFistActive || manualFaceFill ? "✊ FACE FILLED" : "NONE"}
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Hand Tracking</span>
+            <span style={{ color: handsDetectedCount > 0 ? hudColor : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
+              {handsDetectedCount > 0 ? `${handsDetectedCount} HANDS TRACKED` : "NONE"}
             </span>
           </div>
         </div>
