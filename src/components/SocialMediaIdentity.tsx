@@ -4,6 +4,12 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
+// MediaPipe Face Oval Contour Landmark Indices (in order around face)
+const FACE_OVAL_LANDMARKS = [
+  10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377,
+  152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+];
+
 export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -84,20 +90,36 @@ export const SocialMediaIdentity: React.FC = () => {
     setFaceDetected(false);
   };
 
-  // Render Clean Semi-Transparent Glass Pixel Mosaic over face region (No outer frame/borders)
+  // Render Clean Semi-Transparent Glass Pixel Mosaic clipped STRICTLY to inner face contour
   const renderGlassMosaic = (
     ctx: CanvasRenderingContext2D,
     video: HTMLVideoElement,
-    boxX: number,
-    boxY: number,
-    boxW: number,
-    boxH: number,
+    landmarks: any[],
     canvasW: number,
     canvasH: number
   ) => {
-    // Setup offscreen low-res pixel sampling canvas
-    const sampleW = Math.max(10, Math.floor(boxW / mosaicSize));
-    const sampleH = Math.max(10, Math.floor(boxH / mosaicSize));
+    // 1. Calculate tight bounding box of face landmarks
+    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+    FACE_OVAL_LANDMARKS.forEach((idx) => {
+      const pt = landmarks[idx];
+      if (pt) {
+        if (pt.x < minX) minX = pt.x;
+        if (pt.x > maxX) maxX = pt.x;
+        if (pt.y < minY) minY = pt.y;
+        if (pt.y > maxY) maxY = pt.y;
+      }
+    });
+
+    const boxX = (1 - maxX) * canvasW;
+    const boxY = minY * canvasH;
+    const boxW = (maxX - minX) * canvasW;
+    const boxH = (maxY - minY) * canvasH;
+
+    if (boxW <= 0 || boxH <= 0) return;
+
+    // 2. Setup offscreen low-res pixel sampling canvas
+    const sampleW = Math.max(8, Math.floor(boxW / mosaicSize));
+    const sampleH = Math.max(8, Math.floor(boxH / mosaicSize));
 
     if (!mosaicOffscreenCanvasRef.current) {
       mosaicOffscreenCanvasRef.current = document.createElement("canvas");
@@ -131,7 +153,21 @@ export const SocialMediaIdentity: React.FC = () => {
 
     ctx.save();
 
-    // Loop through mosaic pixel blocks - Clean seamless glass fill
+    // 3. Clip rendering context strictly to the Face Oval Contour (No hair, forehead, ears, or neck!)
+    ctx.beginPath();
+    FACE_OVAL_LANDMARKS.forEach((idx, i) => {
+      const pt = landmarks[idx];
+      if (pt) {
+        const px = (1 - pt.x) * canvasW;
+        const py = pt.y * canvasH;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+    });
+    ctx.closePath();
+    ctx.clip(); // Restrict glass mosaic strictly inside face contour!
+
+    // 4. Loop through mosaic pixel blocks - Clean seamless glass fill
     for (let gy = 0; gy < sampleH; gy++) {
       for (let gx = 0; gx < sampleW; gx++) {
         const idx = (gy * sampleW + gx) * 4;
@@ -181,26 +217,9 @@ export const SocialMediaIdentity: React.FC = () => {
             setFaceDetected(true);
             const landmarks = results.faceLandmarks[0];
 
-            let minX = 1, maxX = 0, minY = 1, maxY = 0;
-            landmarks.forEach((pt) => {
-              if (pt.x < minX) minX = pt.x;
-              if (pt.x > maxX) maxX = pt.x;
-              if (pt.y < minY) minY = pt.y;
-              if (pt.y > maxY) maxY = pt.y;
-            });
-
-            // Expand face box padding for natural head coverage
-            const padX = (maxX - minX) * 0.15;
-            const padY = (maxY - minY) * 0.2;
-
-            const boxX = Math.max(0, (1 - maxX - padX)) * w;
-            const boxY = Math.max(0, (minY - padY)) * h;
-            const boxW = Math.min(1, (maxX - minX + padX * 2)) * w;
-            const boxH = Math.min(1, (maxY - minY + padY * 2)) * h;
-
-            // 3. Render Clean Semi-Transparent Glass Mosaic over Face
+            // 3. Render Clean Semi-Transparent Glass Mosaic STRICTLY over Face Contour
             if (isMosaicActive) {
-              renderGlassMosaic(ctx, video, boxX, boxY, boxW, boxH, w, h);
+              renderGlassMosaic(ctx, video, landmarks, w, h);
             }
           } else {
             setFaceDetected(false);
