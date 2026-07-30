@@ -4,6 +4,15 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
+const HUD_PRESET_COLORS = [
+  "#ff0055", // Hot Pink / Magenta (Default)
+  "#00e5ff", // Cyber Cyan
+  "#ff3b30", // Neon Red
+  "#ffcc00", // Electric Amber
+  "#00ff66", // Matrix Green
+  "#9d00ff"  // Deep Violet
+];
+
 export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -15,6 +24,8 @@ export const SocialMediaIdentity: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<string>("0-2727-07");
+  const [hudColor, setHudColor] = useState<string>("#ff0055");
+  const [recOffsetY, setRecOffsetY] = useState<number>(75); // Moved down to 75px
 
   // MediaPipe & Animation Refs
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -105,7 +116,7 @@ export const SocialMediaIdentity: React.FC = () => {
     snapCtx.filter = "grayscale(100%) contrast(140%) brightness(105%)";
     snapCtx.clearRect(0, 0, 240, 280);
 
-    // Add slight padding around cropped face
+    // Add padding around cropped face
     const padX = srcW * 0.3;
     const padY = srcH * 0.4;
     const cropX = Math.max(0, srcX - padX);
@@ -179,7 +190,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
             detectedBoundingBox = { x: boxX, y: boxY, w: boxW, h: boxH };
 
-            // Periodically update B&W face snapshot every 1.5s
+            // Update B&W face snapshot every 1.5s
             if (!hasSnapshotRef.current || now - lastSnapshotTimeRef.current > 1500) {
               updateFaceSnapshot(video, rawSrcX, rawSrcY, rawSrcW, rawSrcH);
               lastSnapshotTimeRef.current = now;
@@ -192,20 +203,20 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      const pinkColor = "#ff0055";
-
-      // 3. Render Target Tracking Box over Detected Face (Hot Pink #ff0055)
+      // 3. Render Target Tracking Box over Detected Face (Dynamic Accent Color)
       if (detectedBoundingBox) {
         const { x: bX, y: bY, w: bW, h: bH } = detectedBoundingBox;
         ctx.save();
-        ctx.strokeStyle = pinkColor;
+        ctx.strokeStyle = hudColor;
         ctx.lineWidth = 2;
+        ctx.shadowColor = hudColor;
+        ctx.shadowBlur = 10;
         ctx.strokeRect(bX, bY, bW, bH);
 
         // Corner Brackets for Face Box
         const bracket = Math.min(bW, bH) * 0.25;
         ctx.lineWidth = 4;
-        ctx.strokeStyle = pinkColor;
+        ctx.strokeStyle = hudColor;
 
         // Top-Left
         ctx.beginPath();
@@ -235,8 +246,8 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.lineTo(bX + bW, bY + bH - bracket);
         ctx.stroke();
 
-        // Small tag under box
-        ctx.fillStyle = pinkColor;
+        // Tag under box
+        ctx.fillStyle = hudColor;
         ctx.font = '700 10px "Space Mono", monospace';
         ctx.fillText("Subject Identified", bX, bY + bH + 16);
 
@@ -291,7 +302,7 @@ export const SocialMediaIdentity: React.FC = () => {
       const panelW = 310;
 
       // Header Badge "SUBJECT IDENTIFIED"
-      ctx.fillStyle = pinkColor;
+      ctx.fillStyle = hudColor;
       ctx.fillRect(panelX, panelY, 190, 28);
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 12px "Space Mono", monospace';
@@ -302,7 +313,7 @@ export const SocialMediaIdentity: React.FC = () => {
       const photoW = 240;
       const photoH = 280;
 
-      ctx.strokeStyle = pinkColor;
+      ctx.strokeStyle = hudColor;
       ctx.lineWidth = 2;
       ctx.strokeRect(panelX, photoY, photoW, photoH);
 
@@ -322,7 +333,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       // ID Tag Badge
       const idY = photoY + photoH + 12;
-      ctx.fillStyle = pinkColor;
+      ctx.fillStyle = hudColor;
       ctx.fillRect(panelX + photoW - 110, idY, 110, 22);
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 11px "Space Mono", monospace';
@@ -334,7 +345,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
       ctx.fillRect(panelX, dossierY, panelW, dossierH);
-      ctx.strokeStyle = pinkColor;
+      ctx.strokeStyle = hudColor;
       ctx.lineWidth = 1;
       ctx.strokeRect(panelX, dossierY, panelW, dossierH);
 
@@ -363,7 +374,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       // Bottom CTA Button "DETAILED INFORMATION ➔"
       const ctaY = dossierY + dossierH - 32;
-      ctx.fillStyle = pinkColor;
+      ctx.fillStyle = hudColor;
       ctx.fillRect(panelX, ctaY, panelW, 32);
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 11px "Space Mono", monospace';
@@ -371,9 +382,9 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 6. Render Viewport Outer Four Corner Brackets (Hot Pink #ff0055 L-shaped right angles)
+      // 6. Render Viewport Outer Four Corner Brackets (Dynamic HUD Color L-shaped right angles)
       ctx.save();
-      ctx.strokeStyle = pinkColor;
+      ctx.strokeStyle = hudColor;
       ctx.lineWidth = 4;
       const margin = 20;
       const cornerLen = 50;
@@ -408,10 +419,9 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 7. Render Top-Right Live REC & Timestamp (Blinking Red/Pink Dot + Timestamp)
+      // 7. Render Top-Right Live REC & Timestamp (Moved Down to recOffsetY)
       ctx.save();
-      const recX = w - 190;
-      const recY = 44;
+      const recY = recOffsetY;
 
       // Date Timestamp
       const d = new Date();
@@ -422,10 +432,12 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.textAlign = "right";
       ctx.fillText(dateStr, w - 30, recY);
 
-      // Blinking Red Dot
+      // Blinking Red/HUD Color Dot
       const isBlinkOn = Math.floor(now / 500) % 2 === 0;
       if (isBlinkOn) {
-        ctx.fillStyle = pinkColor;
+        ctx.fillStyle = hudColor;
+        ctx.shadowColor = hudColor;
+        ctx.shadowBlur = 10;
         ctx.beginPath();
         ctx.arc(w - 180, recY - 4, 7, 0, Math.PI * 2);
         ctx.fill();
@@ -461,14 +473,14 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.stroke();
       }
 
-      ctx.fillStyle = "#ff0055";
+      ctx.fillStyle = hudColor;
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
       ctx.fillText("START WEBCAM FOR AI SURVEILLANCE DOSSIER", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, subjectId]);
+  }, [isCameraActive, subjectId, hudColor, recOffsetY]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -527,6 +539,67 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
+        {/* HUD Color Theme Controls */}
+        <div className={styles.sectionHeader}>
+          <span>HUD Accent Color</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Theme Palette</span>
+            <span className={styles.controlValue}>{hudColor.toUpperCase()}</span>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, marginBottom: 12 }}>
+            {HUD_PRESET_COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setHudColor(c)}
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  backgroundColor: c,
+                  border: hudColor.toLowerCase() === c ? "2px solid #fff" : "1px solid rgba(255,255,255,0.2)",
+                  cursor: "pointer",
+                  padding: 0
+                }}
+              />
+            ))}
+            {/* Native Custom Color Picker */}
+            <input
+              type="color"
+              value={hudColor.startsWith("#") ? hudColor : "#ff0055"}
+              onChange={(e) => setHudColor(e.target.value)}
+              style={{
+                width: 26,
+                height: 26,
+                padding: 0,
+                border: "none",
+                borderRadius: "50%",
+                cursor: "pointer",
+                background: "none"
+              }}
+              title="Custom Color Picker"
+            />
+          </div>
+        </div>
+
+        {/* REC Indicator Position Y Slider */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>REC Y Position</span>
+            <span className={styles.controlValue}>{recOffsetY}px</span>
+          </div>
+          <input
+            type="range"
+            min={40}
+            max={150}
+            step={2}
+            value={recOffsetY}
+            onChange={(e) => setRecOffsetY(parseInt(e.target.value))}
+          />
+        </div>
+
         {/* AI Target ID Input */}
         <div className={styles.sectionHeader}>
           <span>Target Settings</span>
@@ -556,8 +629,8 @@ export const SocialMediaIdentity: React.FC = () => {
         {/* AI Face Detection Status Indicator */}
         <div
           style={{
-            background: "rgba(255, 0, 85, 0.1)",
-            border: "1px solid rgba(255, 0, 85, 0.3)",
+            background: `${hudColor}1a`,
+            border: `1px solid ${hudColor}4d`,
             borderRadius: "6px",
             padding: "10px 12px",
             marginBottom: 20,
@@ -568,7 +641,7 @@ export const SocialMediaIdentity: React.FC = () => {
           }}
         >
           <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>AI Surveillance</span>
-          <span style={{ color: faceDetected ? "#ff0055" : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
+          <span style={{ color: faceDetected ? hudColor : "rgba(255, 255, 255, 0.3)", fontWeight: 700 }}>
             {faceDetected ? "IDENTIFIED" : "SEARCHING..."}
           </span>
         </div>
