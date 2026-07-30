@@ -495,7 +495,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.font = '700 11px "Space Mono", monospace';
       ctx.fillText(`ID:${subjectId}`, panelX + photoW - 102, idY + 15);
 
-      // Dossier Text Info Box (with Real-Time AI Attributes)
+      // Dossier Text Info Box
       const dossierY = idY + 30;
       const dossierH = 240;
 
@@ -505,7 +505,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.lineWidth = 1;
       ctx.strokeRect(panelX, dossierY, panelW, dossierH);
 
-      // Dossier Text Content featuring AI Real-time Attribute Detection
+      // Dossier Text Content
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 10px "Space Mono", monospace';
       let ty = dossierY + 22;
@@ -538,46 +538,139 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 8. Render Connecting Cyber Wire Line between B&W Photo Snapshot & Target Face Box
+      // 8. Render TWO Right-Side Information HUD Panels (Right Panel 1 & Right Panel 2)
+      ctx.save();
+      const rPanelW = 270;
+
+      // --- Right HUD Panel 1: Biometric Matrix Analytics ---
+      const rPanel1X = w - rPanelW - 36;
+      const rPanel1Y = 140;
+      const rPanel1H = 125;
+
+      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
+      ctx.fillRect(rPanel1X, rPanel1Y, rPanelW, rPanel1H);
+      ctx.strokeStyle = hudColor;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(rPanel1X, rPanel1Y, rPanelW, rPanel1H);
+
+      // Title Bar 1
+      ctx.fillStyle = hudColor;
+      ctx.fillRect(rPanel1X, rPanel1Y, rPanelW, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 10px "Space Mono", monospace';
+      ctx.fillText("FACIAL MATRIX ANALYTICS", rPanel1X + 10, rPanel1Y + 16);
+
+      let r1y = rPanel1Y + 42;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.font = '700 9px "Space Mono", monospace';
+      ctx.fillText("SYMMETRY: 98.6% VERIFIED", rPanel1X + 10, r1y); r1y += 18;
+      ctx.fillText("EXPRESSION: NEUTRAL FOCUS", rPanel1X + 10, r1y); r1y += 18;
+      ctx.fillText("RETINA MATRIX: MATCHED", rPanel1X + 10, r1y); r1y += 18;
+      ctx.fillText("PUPIL DISTANCE: OPTIMAL", rPanel1X + 10, r1y);
+
+      // --- Right HUD Panel 2: Threat Analysis & Behavioral Log ---
+      const rPanel2X = w - rPanelW - 36;
+      const rPanel2Y = 285;
+      const rPanel2H = 120;
+
+      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
+      ctx.fillRect(rPanel2X, rPanel2Y, rPanelW, rPanel2H);
+      ctx.strokeStyle = hudColor;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(rPanel2X, rPanel2Y, rPanelW, rPanel2H);
+
+      // Title Bar 2
+      ctx.fillStyle = hudColor;
+      ctx.fillRect(rPanel2X, rPanel2Y, rPanelW, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 10px "Space Mono", monospace';
+      ctx.fillText("BEHAVIORAL & THREAT LOG", rPanel2X + 10, rPanel2Y + 16);
+
+      let r2y = rPanel2Y + 42;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.font = '700 9px "Space Mono", monospace';
+      ctx.fillText("LOCK: ACTIVE TARGET LOCK", rPanel2X + 10, r2y); r2y += 18;
+      ctx.fillText("SIGNAL STRENGTH: 99.8%", rPanel2X + 10, r2y); r2y += 18;
+      ctx.fillText("STATUS: CLEAR / NO HOSTILE ACTION", rPanel2X + 10, r2y);
+
+      ctx.restore();
+
+      // 9. Render SOLID Connecting Lines from ALL Panels to Face Box
       if (detectedBoundingBox) {
         ctx.save();
-        const startX = panelX + photoW;
-        const startY = photoY + 20;
-        const targetX = detectedBoundingBox.x;
-        const targetY = detectedBoundingBox.y + 20;
-
         ctx.strokeStyle = hudColor;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2.5; // Solid lines!
         ctx.shadowColor = hudColor;
-        ctx.shadowBlur = 8;
-        ctx.setLineDash([6, 4]);
+        ctx.shadowBlur = 10;
+        ctx.setLineDash([]); // 100% Solid line!
+
+        // --- Line 1: Left B&W Snapshot Photo -> Top-Left of Face Box ---
+        const leftStartX = panelX + photoW;
+        const leftStartY = photoY + 20;
+        const faceLeftX = detectedBoundingBox.x;
+        const faceLeftY = detectedBoundingBox.y + 20;
 
         ctx.beginPath();
-        ctx.moveTo(startX, startY);
-
-        const midX = startX + (targetX - startX) * 0.45;
-        ctx.lineTo(midX, startY);
-        ctx.lineTo(midX, targetY);
-        ctx.lineTo(targetX, targetY);
+        ctx.moveTo(leftStartX, leftStartY);
+        const midLeftX = leftStartX + (faceLeftX - leftStartX) * 0.45;
+        ctx.lineTo(midLeftX, leftStartY);
+        ctx.lineTo(midLeftX, faceLeftY);
+        ctx.lineTo(faceLeftX, faceLeftY);
         ctx.stroke();
 
-        ctx.setLineDash([]);
         ctx.fillStyle = hudColor;
         ctx.beginPath();
-        ctx.arc(startX, startY, 4, 0, Math.PI * 2);
-        ctx.arc(targetX, targetY, 4, 0, Math.PI * 2);
+        ctx.arc(leftStartX, leftStartY, 4, 0, Math.PI * 2);
+        ctx.arc(faceLeftX, faceLeftY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // --- Line 2 (NEW): Right HUD Panel 1 -> Top-Right of Face Box ---
+        const r1StartX = rPanel1X;
+        const r1StartY = rPanel1Y + 30;
+        const faceRightX = detectedBoundingBox.x + detectedBoundingBox.w;
+        const faceRightY = detectedBoundingBox.y + 20;
+
+        ctx.beginPath();
+        ctx.moveTo(r1StartX, r1StartY);
+        const midR1X = r1StartX - (r1StartX - faceRightX) * 0.45;
+        ctx.lineTo(midR1X, r1StartY);
+        ctx.lineTo(midR1X, faceRightY);
+        ctx.lineTo(faceRightX, faceRightY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(r1StartX, r1StartY, 4, 0, Math.PI * 2);
+        ctx.arc(faceRightX, faceRightY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // --- Line 3 (NEW): Right HUD Panel 2 -> Bottom-Right of Face Box ---
+        const r2StartX = rPanel2X;
+        const r2StartY = rPanel2Y + 30;
+        const faceRightBottomY = detectedBoundingBox.y + detectedBoundingBox.h - 20;
+
+        ctx.beginPath();
+        ctx.moveTo(r2StartX, r2StartY);
+        const midR2X = r2StartX - (r2StartX - faceRightX) * 0.45;
+        ctx.lineTo(midR2X, r2StartY);
+        ctx.lineTo(midR2X, faceRightBottomY);
+        ctx.lineTo(faceRightX, faceRightBottomY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(r2StartX, r2StartY, 4, 0, Math.PI * 2);
+        ctx.arc(faceRightX, faceRightBottomY, 4, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
       }
 
-      // 9. Render Right Side Snapshot Confirmation Pop-up Window
+      // 10. Render Right Side Snapshot Confirmation Pop-up Window
       if (showExportModal) {
         ctx.save();
         const winW = 330;
-        const winH = 200;
+        const winH = 190;
         const winX = w - winW - 36;
-        const winY = h - winH - 40;
+        const winY = h - winH - 30;
 
         // Window Background & Glass Tint
         ctx.fillStyle = "rgba(10, 10, 16, 0.9)";
@@ -610,9 +703,9 @@ export const SocialMediaIdentity: React.FC = () => {
 
         // Action Confirmation Button "YES, SNAPSHOT DOSSIER"
         const btnW = 290;
-        const btnH = 42;
+        const btnH = 40;
         const btnX = winX + 20;
-        const btnY = winY + 130;
+        const btnY = winY + 125;
 
         ctx.fillStyle = hudColor;
         ctx.fillRect(btnX, btnY, btnW, btnH);
@@ -623,12 +716,12 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.fillStyle = "#ffffff";
         ctx.font = '700 12px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("YES, SNAPSHOT DOSSIER (PNG)", btnX + btnW / 2, btnY + 26);
+        ctx.fillText("YES, SNAPSHOT DOSSIER (PNG)", btnX + btnW / 2, btnY + 25);
 
         ctx.restore();
       }
 
-      // 10. Render Viewport Outer Four Corner Brackets
+      // 11. Render Viewport Outer Four Corner Brackets
       ctx.save();
       ctx.strokeStyle = hudColor;
       ctx.lineWidth = 4;
@@ -665,7 +758,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
       ctx.restore();
 
-      // 11. Render Top-Right Live REC & Timestamp
+      // 12. Render Top-Right Live REC & Timestamp
       ctx.save();
       const timestampY = recOffsetY;
       const recY = recOffsetY + 28;
