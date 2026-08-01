@@ -371,10 +371,12 @@ export const MosaicEffectGenerator: React.FC = () => {
                 flex: 1,
                 padding: "8px",
                 fontSize: "12px",
-                fontWeight: 700,
-                background: showReferenceGrid ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: showReferenceGrid ? "#ffffff" : "rgba(255, 255, 255, 0.15)",
-                color: "#ffffff"
+                fontWeight: showReferenceGrid ? 800 : 700,
+                background: showReferenceGrid ? "#000000" : "#ffffff",
+                border: showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
+                color: showReferenceGrid ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
               }}
               onClick={() => setShowReferenceGrid(true)}
             >
@@ -385,10 +387,12 @@ export const MosaicEffectGenerator: React.FC = () => {
                 flex: 1,
                 padding: "8px",
                 fontSize: "12px",
-                fontWeight: 700,
-                background: !showReferenceGrid ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: !showReferenceGrid ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
-                color: !showReferenceGrid ? "#ff3b30" : "#ffffff"
+                fontWeight: !showReferenceGrid ? 800 : 700,
+                background: !showReferenceGrid ? "#000000" : "#ffffff",
+                border: !showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
+                color: !showReferenceGrid ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
               }}
               onClick={() => setShowReferenceGrid(false)}
             >
@@ -489,10 +493,12 @@ export const MosaicEffectGenerator: React.FC = () => {
                 flex: 1,
                 padding: "8px",
                 fontSize: "12px",
-                fontWeight: 700,
-                background: isEffectEnabled ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: isEffectEnabled ? "#ffffff" : "rgba(255, 255, 255, 0.15)",
-                color: "#ffffff"
+                fontWeight: isEffectEnabled ? 800 : 700,
+                background: isEffectEnabled ? "#000000" : "#ffffff",
+                border: isEffectEnabled ? "2px solid #000000" : "2px solid #000000",
+                color: isEffectEnabled ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
               }}
               onClick={() => setIsEffectEnabled(true)}
             >
@@ -503,10 +509,12 @@ export const MosaicEffectGenerator: React.FC = () => {
                 flex: 1,
                 padding: "8px",
                 fontSize: "12px",
-                fontWeight: 700,
-                background: !isEffectEnabled ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: !isEffectEnabled ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
-                color: !showReferenceGrid ? "#ff3b30" : "#ffffff"
+                fontWeight: !isEffectEnabled ? 800 : 700,
+                background: !isEffectEnabled ? "#000000" : "#ffffff",
+                border: !isEffectEnabled ? "2px solid #000000" : "2px solid #000000",
+                color: !isEffectEnabled ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
               }}
               onClick={() => setIsEffectEnabled(false)}
             >
@@ -530,11 +538,13 @@ export const MosaicEffectGenerator: React.FC = () => {
                     style={{
                       padding: "10px",
                       fontSize: "12px",
-                      fontWeight: 700,
+                      fontWeight: selectedEffectMode === mode ? 800 : 700,
                       textTransform: "capitalize",
-                      background: selectedEffectMode === mode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                      borderColor: selectedEffectMode === mode ? "#ffffff" : "rgba(255, 255, 255, 0.12)",
-                      color: selectedEffectMode === mode ? "#ffffff" : "rgba(255, 255, 255, 0.7)"
+                      background: selectedEffectMode === mode ? "#000000" : "#ffffff",
+                      border: selectedEffectMode === mode ? "2px solid #000000" : "2px solid #000000",
+                      color: selectedEffectMode === mode ? "#ffffff" : "#000000",
+                      borderRadius: "6px",
+                      cursor: "pointer"
                     }}
                     onClick={() => setSelectedEffectMode(mode)}
                   >
