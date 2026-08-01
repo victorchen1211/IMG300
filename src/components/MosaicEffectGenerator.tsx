@@ -141,8 +141,8 @@ export const MosaicEffectGenerator: React.FC = () => {
 
       // Render Selected Tile Style Effects (Cutout, Mosaic, Blur, Invert)
       if (isEffectEnabled && selectedTiles.size > 0) {
-        // Calculate border offset to subtract border area from tile effects
-        const borderInset = (showReferenceGrid && borderWidth > 0) ? borderWidth / 2 : 0;
+        // Full border width inset to ensure tile effects never contain or overlap the border area
+        const borderInset = (showReferenceGrid && borderWidth > 0) ? borderWidth : 0;
 
         selectedTiles.forEach((tileId) => {
           const [r, c] = tileId.split(",").map(Number);
@@ -152,7 +152,7 @@ export const MosaicEffectGenerator: React.FC = () => {
             const tileX = drawX + c * tileW;
             const tileY = drawY + r * tileH;
 
-            // Effective inner tile bounds subtracting border area
+            // Effective inner tile bounds completely excluding the border area
             const effX = tileX + borderInset;
             const effY = tileY + borderInset;
             const effW = Math.max(1, tileW - 2 * borderInset);
@@ -225,7 +225,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           const tileX = drawX + c * tileW;
           const tileY = drawY + r * tileH;
 
-          const borderInset = (showReferenceGrid && borderWidth > 0) ? borderWidth / 2 : 0;
+          const borderInset = (showReferenceGrid && borderWidth > 0) ? borderWidth : 0;
           const effX = tileX + borderInset;
           const effY = tileY + borderInset;
           const effW = Math.max(1, tileW - 2 * borderInset);
