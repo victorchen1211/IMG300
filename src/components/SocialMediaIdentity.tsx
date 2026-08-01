@@ -15,10 +15,10 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // 1x3 (3 Tiles: 1, 2, 3) Controls
-  const [tileSize, setTileSize] = useState<number>(220); // Square Tile Size (50px ~ 320px)
+  // 5-Tile Cross Matrix Controls (Tiles 1, 2, 3, 4, 5)
+  const [tileSize, setTileSize] = useState<number>(180); // Square Tile Size (50px ~ 220px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(100); // Default 100% initial state
+  const [gridOffset, setGridOffset] = useState<number>(100); // Default 100% = Initial Convergence State
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 3 Horizontally Adjacent Tiles with Pre-Shifted Initial Step Offset
+  // Main Render Loop - 5-Tile Cross Matrix: Tile 4 (Top), Tiles 1, 2 (Center), 3, Tile 5 (Bottom)
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -184,14 +184,25 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render 3 HORIZONTALLY ADJACENT SQUARE TILES: 1, 2 (Center), 3
+      // 2. Render 5-TILE CROSS MATRIX (Tiles 1, 2, 3, 4, 5)
       const normCrop = rawFaceCropRef.current;
-      const gridCols = 3;
-      const totalGridW = gridCols * tileSize;
-      const totalGridH = tileSize;
+      const totalGridW = 3 * tileSize;
+      const totalGridH = 3 * tileSize;
 
       const gridStartX = (w - totalGridW) / 2;
       const gridStartY = (h - totalGridH) / 2;
+
+      // Define 5 Tile Specifications: (ID, Col, Row)
+      // Tile 4 (Top: c=1, r=0)
+      // Tile 1 (Left: c=0, r=1), Tile 2 (Center: c=1, r=1), Tile 3 (Right: c=2, r=1)
+      // Tile 5 (Bottom: c=1, r=2)
+      const tiles = [
+        { id: 4, c: 1, r: 0 },
+        { id: 1, c: 0, r: 1 },
+        { id: 2, c: 1, r: 1 },
+        { id: 3, c: 2, r: 1 },
+        { id: 5, c: 1, r: 2 }
+      ];
 
       if (normCrop) {
         // Base Source Video Crop Coordinates with Padding
@@ -209,25 +220,27 @@ export const SocialMediaIdentity: React.FC = () => {
         const cropWNorm = baseMaxX - baseMinX;
         const cropHNorm = baseMaxY - baseMinY;
 
-        // Base Initial Step Shift: Tile 1 pre-shifts Left, Tile 3 pre-shifts Right (showing partial face)
         const baseOutwardStep = 0.20; // 20% initial offset at 50% neutral slider
-
-        // Signed Slider Factor: 50% = 0.0, >50% = Inward Closer, <50% = Outward Farther
         const signedFactor = (gridOffset - 50) / 50; // -1.0 to +1.0
 
-        // Render 3 Square Tiles: Tile 1 (Left), Tile 2 (Center), Tile 3 (Right)
-        for (let c = 0; c < gridCols; c++) {
+        // Render each of the 5 cross tiles
+        tiles.forEach(({ id, c, r }) => {
           const tileX = gridStartX + c * tileSize;
-          const tileY = gridStartY;
+          const tileY = gridStartY + r * tileSize;
 
-          // inwardCol: c=0 (Left) -> +1; c=1 (Center) -> 0; c=2 (Right) -> -1
+          // Inward Convergence Shift Vector toward center Tile 2 (c=1, r=1):
+          // Tile 1 (Left c=0, r=1): inwardCol = +1 -> shifts RIGHT (→)
+          // Tile 3 (Right c=2, r=1): inwardCol = -1 -> shifts LEFT (←)
+          // Tile 4 (Top c=1, r=0): inwardRow = +1 -> shifts DOWN (↓)
+          // Tile 5 (Bottom c=1, r=2): inwardRow = -1 -> shifts UP (↑)
           const inwardCol = 1 - c;
+          const inwardRow = 1 - r;
 
-          // Initial pre-offset (-inwardCol * baseOutwardStep) plus interactive slider shift:
-          const netOffsetFraction = -inwardCol * (baseOutwardStep - signedFactor * 0.48);
+          const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.48);
+          const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.48);
 
-          let tileMinX = baseMinX + netOffsetFraction * cropWNorm;
-          let tileMinY = baseMinY;
+          let tileMinX = baseMinX + netOffsetCol * cropWNorm;
+          let tileMinY = baseMinY + netOffsetRow * cropHNorm;
           let tileMaxX = tileMinX + cropWNorm;
           let tileMaxY = tileMinY + cropHNorm;
 
@@ -258,27 +271,27 @@ export const SocialMediaIdentity: React.FC = () => {
           ctx.lineWidth = 1.5;
           ctx.strokeRect(tileX, tileY, tileSize, tileSize);
 
-          // Tile Label Badge (1, 2, 3)
+          // Tile Label Badge (1, 2, 3, 4, 5)
           ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
           ctx.fillRect(tileX + 6, tileY + 6, 24, 18);
-          ctx.fillStyle = c === 1 ? "#00ff22" : "#ffffff";
+          ctx.fillStyle = id === 2 ? "#00ff22" : "#ffffff";
           ctx.font = '800 11px "Space Mono", monospace';
           ctx.textAlign = "center";
-          ctx.fillText(`${c + 1}`, tileX + 18, tileY + 19);
-        }
+          ctx.fillText(`${id}`, tileX + 18, tileY + 19);
+        });
       } else {
         // Simple prompt when face region is searching
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("SEARCHING FACE REGION FOR 3 TILES (1, 2, 3)...", w / 2, h / 2);
+        ctx.fillText("SEARCHING FACE REGION FOR 5 CROSS TILES...", w / 2, h / 2);
       }
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW 3 ADJACENT TILES (1, 2, 3)", w / 2, h / 2);
+      ctx.fillText("START WEBCAM TO VIEW 5 CROSS TILES (1, 2, 3, 4, 5)", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -301,7 +314,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>3 Adjacent Face Tiles (1, 2, 3)</div>
+        <div className={styles.brandSubtitle}>5-Tile Cross Matrix (1, 2, 3, 4, 5)</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -341,9 +354,9 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* 3 Tiles Controls */}
+        {/* 5 Tiles Controls */}
         <div className={styles.sectionHeader}>
-          <span>3-Tile Grid Settings</span>
+          <span>5-Tile Cross Settings</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
@@ -354,17 +367,17 @@ export const SocialMediaIdentity: React.FC = () => {
           <input
             type="range"
             min={50}
-            max={320}
+            max={220}
             step={10}
             value={tileSize}
             onChange={(e) => setTileSize(parseInt(e.target.value))}
           />
         </div>
 
-        {/* Horizontal Shift Offset (50% = Pre-shifted Initial State) */}
+        {/* Horizontal & Vertical Convergence Shift Offset */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Horizontal Shift Offset</span>
+            <span className={styles.controlLabel}>Inward Convergence Shift</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
@@ -414,7 +427,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
             <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED (TILES 1,2,3)" : "SEARCHING..."}
+              {faceDetected ? "TRACKED (TILES 1,2,3,4,5)" : "SEARCHING..."}
             </span>
           </div>
         </div>
@@ -445,7 +458,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 3 Horizontally Adjacent Face Region Tiles (1 & 3 Pre-offset Partial Face)
+          IMG300 Studio • 5-Tile Cross Matrix (Tile 4 Top, Tiles 1-2-3 Center, Tile 5 Bottom)
         </div>
       </div>
     </div>
