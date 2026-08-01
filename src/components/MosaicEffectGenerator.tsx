@@ -35,6 +35,12 @@ export const MosaicEffectGenerator: React.FC = () => {
   // Interactive Tile Selection (Set of "row,col" strings)
   const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set());
 
+  // Tile Effect Controls (Master Toggle + Mode Selection)
+  const [isEffectEnabled, setIsEffectEnabled] = useState<boolean>(true); // Master Effect Toggle
+  const [selectedEffectMode, setSelectedEffectMode] = useState<"cutout" | "mosaic" | "blur" | "invert">("cutout");
+  const [mosaicBlockSize, setMosaicBlockSize] = useState<number>(12); // Mosaic pixel block size (4px ~ 32px)
+  const [blurRadius, setBlurRadius] = useState<number>(10); // Blur radius (4px ~ 24px)
+
   // Load default sample image on mount
   useEffect(() => {
     const img = new Image();
@@ -80,7 +86,7 @@ export const MosaicEffectGenerator: React.FC = () => {
     return { numCols, numRows };
   }, [gridCols, gridRows, tileShapeMode]);
 
-  // Render Loop to Draw Image, Grid Lines, and Selected Tile Highlights
+  // Render Loop to Draw Image, Tile Effects, Selected Tile Highlights, and Grid Lines
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -146,11 +152,86 @@ export const MosaicEffectGenerator: React.FC = () => {
       ctx.shadowBlur = 40;
       ctx.shadowOffsetY = 15;
 
-      // Draw Clean Uploaded Image
+      // Draw Base Clean Uploaded Image
       ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
       ctx.restore();
 
-      // Render Selected Grid Tile Highlights
+      // Render Selected Tile Generative Effects (Cutout, Mosaic, Blur, Invert)
+      if (isEffectEnabled && selectedTiles.size > 0) {
+        selectedTiles.forEach((tileId) => {
+          const [r, c] = tileId.split(",").map(Number);
+          if (r < numRows && c < numCols) {
+            const tileW = drawW / numCols;
+            const tileH = drawH / numRows;
+            const tileX = drawX + c * tileW;
+            const tileY = drawY + r * tileH;
+
+            const srcX = (c / numCols) * sourceImage.naturalWidth;
+            const srcY = (r / numRows) * sourceImage.naturalHeight;
+            const srcW = sourceImage.naturalWidth / numCols;
+            const srcH = sourceImage.naturalHeight / numRows;
+
+            if (selectedEffectMode === "cutout") {
+              // Mode 1: Cutout / Transparent Punch
+              ctx.save();
+              ctx.clearRect(tileX, tileY, tileW, tileH);
+              ctx.fillStyle = "#0c0c14";
+              ctx.fillRect(tileX, tileY, tileW, tileH);
+
+              // Subdued hatched pattern for cutout tile
+              ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+              ctx.lineWidth = 1;
+              for (let i = -tileW; i < tileW + tileH; i += 12) {
+                ctx.beginPath();
+                ctx.moveTo(tileX + i, tileY);
+                ctx.lineTo(tileX + i + tileH, tileY + tileH);
+                ctx.stroke();
+              }
+              ctx.restore();
+            } else if (selectedEffectMode === "mosaic") {
+              // Mode 2: Pixelated Mosaic
+              ctx.save();
+              const blockSize = Math.max(4, mosaicBlockSize);
+              const tempW = Math.max(1, Math.floor(tileW / blockSize));
+              const tempH = Math.max(1, Math.floor(tileH / blockSize));
+
+              const tempCanvas = document.createElement("canvas");
+              tempCanvas.width = tempW;
+              tempCanvas.height = tempH;
+              const tempCtx = tempCanvas.getContext("2d");
+
+              if (tempCtx) {
+                tempCtx.imageSmoothingEnabled = false;
+                tempCtx.drawImage(sourceImage, srcX, srcY, srcW, srcH, 0, 0, tempW, tempH);
+
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(tempCanvas, 0, 0, tempW, tempH, tileX, tileY, tileW, tileH);
+              }
+              ctx.restore();
+            } else if (selectedEffectMode === "blur") {
+              // Mode 3: Blur / Frosted
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(tileX, tileY, tileW, tileH);
+              ctx.clip();
+              ctx.filter = `blur(${Math.max(4, blurRadius)}px)`;
+              ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, tileX, tileY, tileW, tileH);
+              ctx.restore();
+            } else if (selectedEffectMode === "invert") {
+              // Mode 4: Color Invert / Negative
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(tileX, tileY, tileW, tileH);
+              ctx.clip();
+              ctx.filter = "invert(100%)";
+              ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, tileX, tileY, tileW, tileH);
+              ctx.restore();
+            }
+          }
+        });
+      }
+
+      // Render Selected Grid Tile Highlight Outlines
       selectedTiles.forEach((tileId) => {
         const [r, c] = tileId.split(",").map(Number);
         if (r < numRows && c < numCols) {
@@ -159,9 +240,9 @@ export const MosaicEffectGenerator: React.FC = () => {
           const tileX = drawX + c * tileW;
           const tileY = drawY + r * tileH;
 
-          // Highlight Fill Overlay
+          // Highlight Overlay
           ctx.save();
-          ctx.fillStyle = hexToRgba(lineColor, 35);
+          ctx.fillStyle = hexToRgba(lineColor, 25);
           ctx.fillRect(tileX, tileY, tileW, tileH);
 
           // Glowing Outline for Selected Tile
@@ -208,7 +289,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN MOSAIC GRID SELECTION", w / 2, h / 2);
     }
-  }, [sourceImage, gridCols, gridRows, tileShapeMode, showGridLines, lineWidth, lineColor, selectedTiles, getEffectiveGridCounts]);
+  }, [sourceImage, gridCols, gridRows, tileShapeMode, showGridLines, lineWidth, lineColor, selectedTiles, isEffectEnabled, selectedEffectMode, mosaicBlockSize, blurRadius, getEffectiveGridCounts]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -271,7 +352,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           onUploadImage={handleUploadImage}
         />
 
-        {/* Grid Tile Shape Mode (Square vs Rectangle) */}
+        {/* Tile Shape Mode */}
         <div className={styles.sectionHeader}>
           <span>Tile Aspect Ratio</span>
         </div>
@@ -318,7 +399,6 @@ export const MosaicEffectGenerator: React.FC = () => {
           <span>Grid Division</span>
         </div>
 
-        {/* Column Slider */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
             <span className={styles.controlLabel}>
@@ -336,7 +416,6 @@ export const MosaicEffectGenerator: React.FC = () => {
           />
         </div>
 
-        {/* Row Slider (Only active in Rectangle Mode) */}
         {tileShapeMode === "rectangle" && (
           <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
             <div className={styles.controlHeader}>
@@ -352,6 +431,151 @@ export const MosaicEffectGenerator: React.FC = () => {
               onChange={(e) => setGridRows(parseInt(e.target.value))}
             />
           </div>
+        )}
+
+        {/* Tile Effect Settings (Master Toggle + Mode Selection) */}
+        <div className={styles.sectionHeader}>
+          <span>Tile Effect Settings</span>
+        </div>
+
+        {/* Master Effect Toggle Switch */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Apply Tile Effects</span>
+            <span className={styles.controlValue}>{isEffectEnabled ? "ENABLED" : "DISABLED"}</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: 700,
+                background: isEffectEnabled ? "rgba(0, 255, 34, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: isEffectEnabled ? "#00ff22" : "rgba(255, 255, 255, 0.15)",
+                color: isEffectEnabled ? "#00ff22" : "#ffffff"
+              }}
+              onClick={() => setIsEffectEnabled(true)}
+            >
+              ✓ Enabled
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: 700,
+                background: !isEffectEnabled ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: !isEffectEnabled ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
+                color: !isEffectEnabled ? "#ff3b30" : "#ffffff"
+              }}
+              onClick={() => setIsEffectEnabled(false)}
+            >
+              ✕ Disabled
+            </button>
+          </div>
+        </div>
+
+        {/* Effect Mode Selection (Cutout, Mosaic, Blur, Invert) */}
+        {isEffectEnabled && (
+          <>
+            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+              <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+                <span className={styles.controlLabel}>Effect Mode</span>
+                <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{selectedEffectMode}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <button
+                  style={{
+                    padding: "8px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    background: selectedEffectMode === "cutout" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    borderColor: selectedEffectMode === "cutout" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                    color: selectedEffectMode === "cutout" ? "#00e5ff" : "#ffffff"
+                  }}
+                  onClick={() => setSelectedEffectMode("cutout")}
+                >
+                  🕳️ Cutout
+                </button>
+                <button
+                  style={{
+                    padding: "8px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    background: selectedEffectMode === "mosaic" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    borderColor: selectedEffectMode === "mosaic" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                    color: selectedEffectMode === "mosaic" ? "#00e5ff" : "#ffffff"
+                  }}
+                  onClick={() => setSelectedEffectMode("mosaic")}
+                >
+                  👾 Mosaic
+                </button>
+                <button
+                  style={{
+                    padding: "8px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    background: selectedEffectMode === "blur" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    borderColor: selectedEffectMode === "blur" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                    color: selectedEffectMode === "blur" ? "#00e5ff" : "#ffffff"
+                  }}
+                  onClick={() => setSelectedEffectMode("blur")}
+                >
+                  🌀 Blur
+                </button>
+                <button
+                  style={{
+                    padding: "8px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    background: selectedEffectMode === "invert" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    borderColor: selectedEffectMode === "invert" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                    color: selectedEffectMode === "invert" ? "#00e5ff" : "#ffffff"
+                  }}
+                  onClick={() => setSelectedEffectMode("invert")}
+                >
+                  🔄 Invert
+                </button>
+              </div>
+            </div>
+
+            {/* Mosaic Block Size Slider */}
+            {selectedEffectMode === "mosaic" && (
+              <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+                <div className={styles.controlHeader}>
+                  <span className={styles.controlLabel}>Mosaic Block Size</span>
+                  <span className={styles.controlValue}>{mosaicBlockSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={4}
+                  max={32}
+                  step={2}
+                  value={mosaicBlockSize}
+                  onChange={(e) => setMosaicBlockSize(parseInt(e.target.value))}
+                />
+              </div>
+            )}
+
+            {/* Blur Radius Slider */}
+            {selectedEffectMode === "blur" && (
+              <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+                <div className={styles.controlHeader}>
+                  <span className={styles.controlLabel}>Blur Radius</span>
+                  <span className={styles.controlValue}>{blurRadius}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={4}
+                  max={24}
+                  step={2}
+                  value={blurRadius}
+                  onChange={(e) => setBlurRadius(parseInt(e.target.value))}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {/* Grid Line Display Toggle */}
@@ -516,7 +740,7 @@ export const MosaicEffectGenerator: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • {tileShapeMode.toUpperCase()} Mode • Click Grid Tiles to Select ({selectedTiles.size} Selected)
+          IMG300 Studio • {selectedEffectMode.toUpperCase()} Effect ({selectedTiles.size} Tiles Affected)
         </div>
       </div>
     </div>
