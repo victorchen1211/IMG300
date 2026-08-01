@@ -12,35 +12,59 @@ export const SocialMediaIdentity: React.FC = () => {
   // Control State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [modelStatus, setModelStatus] = useState<string>("Loading AI Model...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
   // MediaPipe FaceLandmarker Ref
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const lastVideoTimeRef = useRef<number>(-1);
 
-  // Initialize MediaPipe FaceLandmarker Model
+  // Initialize MediaPipe FaceLandmarker Model with CPU/GPU Fallback
   useEffect(() => {
     let isMounted = true;
     const initMediaPipe = async () => {
       try {
+        setModelStatus("Loading WASM Resolver...");
         const filesetResolver = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
 
-        const faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-          baseOptions: {
-            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-            delegate: "GPU"
-          },
-          runningMode: "VIDEO",
-          numFaces: 1
-        });
+        setModelStatus("Loading Face Model...");
+        let faceLandmarker: FaceLandmarker | null = null;
 
-        if (isMounted) {
-          faceLandmarkerRef.current = faceLandmarker;
+        try {
+          // Attempt 1: GPU Delegate
+          faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+              modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+              delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
+        } catch (gpuErr) {
+          console.warn("GPU delegate failed, trying CPU fallback...", gpuErr);
+          // Attempt 2: CPU Fallback
+          faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            baseOptions: {
+              modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+              delegate: "CPU"
+            },
+            runningMode: "VIDEO",
+            numFaces: 1
+          });
         }
-      } catch (err) {
-        console.warn("MediaPipe load warning:", err);
+
+        if (isMounted && faceLandmarker) {
+          faceLandmarkerRef.current = faceLandmarker;
+          setModelStatus("AI Face Model Ready");
+        }
+      } catch (err: any) {
+        console.error("MediaPipe load error:", err);
+        if (isMounted) {
+          setModelStatus("Model Load Failed (Using Fallback)");
+        }
       }
     };
 
@@ -90,7 +114,6 @@ export const SocialMediaIdentity: React.FC = () => {
 
     const w = canvas.width;
     const h = canvas.height;
-    const now = performance.now();
 
     ctx.clearRect(0, 0, w, h);
 
@@ -102,15 +125,17 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.drawImage(video, 0, 0, w, h);
       ctx.restore();
 
-      // 2. Real-time Face AI Detection & Bounding Box Framing
-      if (faceLandmarkerRef.current) {
+      // 2. Real-time AI Face Detection & Bounding Box Framing
+      let boundingBox: { x: number; y: number; w: number; h: number } | null = null;
+
+      if (faceLandmarkerRef.current && video.currentTime !== lastVideoTimeRef.current) {
+        lastVideoTimeRef.current = video.currentTime;
         try {
-          const results = faceLandmarkerRef.current.detectForVideo(video, now);
+          const results = faceLandmarkerRef.current.detectForVideo(video, performance.now());
           if (results.faceLandmarks && results.faceLandmarks.length > 0) {
             setFaceDetected(true);
             const landmarks = results.faceLandmarks[0];
 
-            // Compute Bounding Box Coordinates
             let minX = 1, maxX = 0, minY = 1, maxY = 0;
             landmarks.forEach((pt) => {
               if (pt.x < minX) minX = pt.x;
@@ -119,69 +144,76 @@ export const SocialMediaIdentity: React.FC = () => {
               if (pt.y > maxY) maxY = pt.y;
             });
 
-            // Mirrored Canvas Bounding Box
-            const padding = 15;
+            const padding = 20;
             const boxX = (1 - maxX) * w - padding;
             const boxY = minY * h - padding;
             const boxW = (maxX - minX) * w + padding * 2;
             const boxH = (maxY - minY) * h + padding * 2;
 
-            // Draw Cyber Green Neon Bounding Box Around Face
-            ctx.save();
-            ctx.strokeStyle = "#00ff22";
-            ctx.lineWidth = 2.5;
-            ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-            // Draw HUD Corner Brackets
-            const bracketLength = 20;
-            ctx.lineWidth = 4;
-
-            // Top-Left Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX, boxY + bracketLength);
-            ctx.lineTo(boxX, boxY);
-            ctx.lineTo(boxX + bracketLength, boxY);
-            ctx.stroke();
-
-            // Top-Right Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW - bracketLength, boxY);
-            ctx.lineTo(boxX + boxW, boxY);
-            ctx.lineTo(boxX + boxW, boxY + bracketLength);
-            ctx.stroke();
-
-            // Bottom-Left Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX, boxY + boxH - bracketLength);
-            ctx.lineTo(boxX, boxY + boxH);
-            ctx.lineTo(boxX + bracketLength, boxY + boxH);
-            ctx.stroke();
-
-            // Bottom-Right Corner
-            ctx.beginPath();
-            ctx.moveTo(boxX + boxW - bracketLength, boxY + boxH);
-            ctx.lineTo(boxX + boxW, boxY + boxH);
-            ctx.lineTo(boxX + boxW, boxY + boxH - bracketLength);
-            ctx.stroke();
-
-            // Top Label Tag: FACE DETECTED
-            ctx.fillStyle = "rgba(0, 255, 34, 0.2)";
-            ctx.fillRect(boxX, boxY - 24, 130, 20);
-            ctx.strokeStyle = "#00ff22";
-            ctx.lineWidth = 1;
-            ctx.strokeRect(boxX, boxY - 24, 130, 20);
-
-            ctx.fillStyle = "#00ff22";
-            ctx.font = '800 10px "Space Mono", monospace';
-            ctx.fillText("● FACE DETECTED", boxX + 8, boxY - 10);
-
-            ctx.restore();
+            boundingBox = { x: boxX, y: boxY, w: boxW, h: boxH };
           } else {
             setFaceDetected(false);
           }
         } catch (e) {
-          // Frame skip
+          console.warn("Face detection frame skip:", e);
         }
+      }
+
+      // If MediaPipe model detected face, draw Cyber Green Neon Bounding Box
+      if (boundingBox) {
+        const { x: boxX, y: boxY, w: boxW, h: boxH } = boundingBox;
+
+        ctx.save();
+        // Green Bounding Rectangle
+        ctx.strokeStyle = "#00ff22";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+        // Cyber Glowing Corner Brackets
+        const bracketLength = 24;
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#00ff22";
+
+        // Top-Left Corner
+        ctx.beginPath();
+        ctx.moveTo(boxX, boxY + bracketLength);
+        ctx.lineTo(boxX, boxY);
+        ctx.lineTo(boxX + bracketLength, boxY);
+        ctx.stroke();
+
+        // Top-Right Corner
+        ctx.beginPath();
+        ctx.moveTo(boxX + boxW - bracketLength, boxY);
+        ctx.lineTo(boxX + boxW, boxY);
+        ctx.lineTo(boxX + boxW, boxY + bracketLength);
+        ctx.stroke();
+
+        // Bottom-Left Corner
+        ctx.beginPath();
+        ctx.moveTo(boxX, boxY + boxH - bracketLength);
+        ctx.lineTo(boxX, boxY + boxH);
+        ctx.lineTo(boxX + bracketLength, boxY + boxH);
+        ctx.stroke();
+
+        // Bottom-Right Corner
+        ctx.beginPath();
+        ctx.moveTo(boxX + boxW - bracketLength, boxY + boxH);
+        ctx.lineTo(boxX + boxW, boxY + boxH);
+        ctx.lineTo(boxX + boxW, boxY + boxH - bracketLength);
+        ctx.stroke();
+
+        // Top Label Tag: FACE DETECTED
+        ctx.fillStyle = "rgba(0, 255, 34, 0.25)";
+        ctx.fillRect(boxX, boxY - 26, 140, 22);
+        ctx.strokeStyle = "#00ff22";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(boxX, boxY - 26, 140, 22);
+
+        ctx.fillStyle = "#00ff22";
+        ctx.font = '800 11px "Space Mono", monospace';
+        ctx.fillText("● FACE DETECTED", boxX + 10, boxY - 10);
+
+        ctx.restore();
       }
     } else {
       // Dark Studio Background when camera is inactive
@@ -287,6 +319,12 @@ export const SocialMediaIdentity: React.FC = () => {
             gap: "8px"
           }}
         >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>AI Model Status</span>
+            <span style={{ color: "#00e5ff", fontWeight: 700, fontSize: "11px" }}>
+              {modelStatus}
+            </span>
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face AI Tracking</span>
             <span style={{ color: faceDetected ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
