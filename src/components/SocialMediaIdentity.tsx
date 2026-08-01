@@ -18,7 +18,7 @@ export const SocialMediaIdentity: React.FC = () => {
   // 1x3 (3 Tiles: 1, 2, 3) Controls
   const [tileSize, setTileSize] = useState<number>(220); // Square Tile Size (50px ~ 320px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(20); // Shift Offset Percentage
+  const [gridOffset, setGridOffset] = useState<number>(50); // Default 50% = Normal Fit (0% = Farther Out, 100% = Closer In)
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 3 Horizontally Adjacent Tiles: Tile 1, Tile 2 (Center), Tile 3
+  // Main Render Loop - 3 Horizontally Adjacent Tiles with 50% Neutral Slider
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -214,14 +214,16 @@ export const SocialMediaIdentity: React.FC = () => {
           const tileX = gridStartX + c * tileSize;
           const tileY = gridStartY;
 
-          // Vector toward center tile 2 (c=1):
-          // Tile 1 (c=0, Left): inwardCol = +1 -> shifts RIGHT (→)
-          // Tile 2 (c=1, Center): inwardCol = 0 -> fixed center
-          // Tile 3 (c=2, Right): inwardCol = -1 -> shifts LEFT (←)
-          const inwardCol = 1 - c;
-          const shiftFraction = (gridOffset / 100);
+          // Signed Shift Factor: 50% = 0.0 (Normal), >50% = Closer In, <50% = Farther Out
+          const signedFactor = (gridOffset - 50) / 50; // -1.0 to +1.0
 
-          let tileMinX = baseMinX - inwardCol * (cropWNorm * shiftFraction);
+          // Vector toward center tile 2 (c=1):
+          // Tile 1 (c=0, Left): inwardCol = +1 -> >50% shifts RIGHT (→), <50% shifts LEFT (←)
+          // Tile 2 (c=1, Center): inwardCol = 0 -> fixed center
+          // Tile 3 (c=2, Right): inwardCol = -1 -> >50% shifts LEFT (←), <50% shifts RIGHT (→)
+          const inwardCol = 1 - c;
+
+          let tileMinX = baseMinX - inwardCol * (cropWNorm * signedFactor * 0.45);
           let tileMinY = baseMinY;
           let tileMaxX = tileMinX + cropWNorm;
           let tileMaxY = tileMinY + cropHNorm;
@@ -356,15 +358,16 @@ export const SocialMediaIdentity: React.FC = () => {
           />
         </div>
 
+        {/* Horizontal Shift Offset (50% = Normal, >50% = Closer, <50% = Farther) */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Horizontal Shift Offset</span>
+            <span className={styles.controlLabel}>Shift (50% Normal / &gt;50% Inward)</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
             type="range"
             min={0}
-            max={60}
+            max={100}
             step={5}
             value={gridOffset}
             onChange={(e) => setGridOffset(parseInt(e.target.value))}
@@ -439,7 +442,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 3 Horizontally Adjacent Square Face Region Tiles (1, 2, 3)
+          IMG300 Studio • 3 Horizontally Adjacent Face Region Tiles (50% = Normal Fit)
         </div>
       </div>
     </div>
