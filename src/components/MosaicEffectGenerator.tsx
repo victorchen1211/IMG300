@@ -20,8 +20,14 @@ export const MosaicEffectGenerator: React.FC = () => {
 
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
 
-  // Grid & Line Controls
-  const [gridDimension, setGridDimension] = useState<number>(6); // N x N (1 to 25)
+  // Tile Shape Mode ("square" | "rectangle")
+  const [tileShapeMode, setTileShapeMode] = useState<"square" | "rectangle">("square");
+
+  // Grid Controls
+  const [gridCols, setGridCols] = useState<number>(8); // Columns (1 to 30)
+  const [gridRows, setGridRows] = useState<number>(8); // Rows (1 to 30)
+
+  // Line Style Controls
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // Show Lines ON / OFF
   const [lineWidth, setLineWidth] = useState<number>(3); // Line Thickness (1px to 20px)
   const [lineColor, setLineColor] = useState<string>("#00e5ff"); // Line Color (Hex)
@@ -39,10 +45,10 @@ export const MosaicEffectGenerator: React.FC = () => {
     img.src = "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80";
   }, []);
 
-  // Clear Tile Selections when Grid Dimension changes
+  // Clear Tile Selections when Grid Dimension or Shape Mode changes
   useEffect(() => {
     setSelectedTiles(new Set());
-  }, [gridDimension]);
+  }, [gridCols, gridRows, tileShapeMode]);
 
   // Handle Image Upload
   const handleUploadImage = (img: HTMLImageElement) => {
@@ -60,6 +66,19 @@ export const MosaicEffectGenerator: React.FC = () => {
     const b = num & 255;
     return `rgba(${r}, ${g}, ${b}, ${alphaPercent / 100})`;
   };
+
+  // Helper to calculate effective column and row count based on tile shape mode
+  const getEffectiveGridCounts = useCallback((drawW: number, drawH: number) => {
+    let numCols = gridCols;
+    let numRows = gridRows;
+
+    if (tileShapeMode === "square") {
+      const tileWidthNorm = drawW / gridCols;
+      numRows = Math.max(1, Math.round(drawH / tileWidthNorm));
+    }
+
+    return { numCols, numRows };
+  }, [gridCols, gridRows, tileShapeMode]);
 
   // Render Loop to Draw Image, Grid Lines, and Selected Tile Highlights
   const renderCanvas = useCallback(() => {
@@ -119,6 +138,8 @@ export const MosaicEffectGenerator: React.FC = () => {
 
       imageBoundsRef.current = { drawX, drawY, drawW, drawH };
 
+      const { numCols, numRows } = getEffectiveGridCounts(drawW, drawH);
+
       // Drop Shadow for Image Container
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
@@ -132,9 +153,9 @@ export const MosaicEffectGenerator: React.FC = () => {
       // Render Selected Grid Tile Highlights
       selectedTiles.forEach((tileId) => {
         const [r, c] = tileId.split(",").map(Number);
-        if (r < gridDimension && c < gridDimension) {
-          const tileW = drawW / gridDimension;
-          const tileH = drawH / gridDimension;
+        if (r < numRows && c < numCols) {
+          const tileW = drawW / numCols;
+          const tileH = drawH / numRows;
           const tileX = drawX + c * tileW;
           const tileY = drawY + r * tileH;
 
@@ -151,15 +172,15 @@ export const MosaicEffectGenerator: React.FC = () => {
         }
       });
 
-      // Render N x N Grid Lines Overlay (Only when showGridLines is ON)
+      // Render Grid Lines Overlay (Only when showGridLines is ON)
       if (showGridLines) {
         ctx.save();
         ctx.strokeStyle = lineColor;
         ctx.lineWidth = lineWidth;
 
         // Draw Vertical Divider Lines
-        for (let c = 1; c < gridDimension; c++) {
-          const lineX = drawX + (c / gridDimension) * drawW;
+        for (let c = 1; c < numCols; c++) {
+          const lineX = drawX + (c / numCols) * drawW;
           ctx.beginPath();
           ctx.moveTo(lineX, drawY);
           ctx.lineTo(lineX, drawY + drawH);
@@ -167,8 +188,8 @@ export const MosaicEffectGenerator: React.FC = () => {
         }
 
         // Draw Horizontal Divider Lines
-        for (let r = 1; r < gridDimension; r++) {
-          const lineY = drawY + (r / gridDimension) * drawH;
+        for (let r = 1; r < numRows; r++) {
+          const lineY = drawY + (r / numRows) * drawH;
           ctx.beginPath();
           ctx.moveTo(drawX, lineY);
           ctx.lineTo(drawX + drawW, lineY);
@@ -187,7 +208,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN MOSAIC GRID SELECTION", w / 2, h / 2);
     }
-  }, [sourceImage, gridDimension, showGridLines, lineWidth, lineColor, selectedTiles]);
+  }, [sourceImage, gridCols, gridRows, tileShapeMode, showGridLines, lineWidth, lineColor, selectedTiles, getEffectiveGridCounts]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -218,8 +239,10 @@ export const MosaicEffectGenerator: React.FC = () => {
       const relX = clickX - drawX;
       const relY = clickY - drawY;
 
-      const col = Math.floor((relX / drawW) * gridDimension);
-      const row = Math.floor((relY / drawH) * gridDimension);
+      const { numCols, numRows } = getEffectiveGridCounts(drawW, drawH);
+
+      const col = Math.floor((relX / drawW) * numCols);
+      const row = Math.floor((relY / drawH) * numRows);
 
       const tileId = `${row},${col}`;
 
@@ -248,27 +271,90 @@ export const MosaicEffectGenerator: React.FC = () => {
           onUploadImage={handleUploadImage}
         />
 
-        {/* Grid Division Settings */}
+        {/* Grid Tile Shape Mode (Square vs Rectangle) */}
+        <div className={styles.sectionHeader}>
+          <span>Tile Aspect Ratio</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Tile Shape Mode</span>
+            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{tileShapeMode}</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: 700,
+                background: tileShapeMode === "square" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: tileShapeMode === "square" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                color: tileShapeMode === "square" ? "#00e5ff" : "#ffffff"
+              }}
+              onClick={() => setTileShapeMode("square")}
+            >
+              🔳 Square (1:1)
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: 700,
+                background: tileShapeMode === "rectangle" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: tileShapeMode === "rectangle" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                color: tileShapeMode === "rectangle" ? "#00e5ff" : "#ffffff"
+              }}
+              onClick={() => setTileShapeMode("rectangle")}
+            >
+              ▮ Rectangle
+            </button>
+          </div>
+        </div>
+
+        {/* Grid Division Controls */}
         <div className={styles.sectionHeader}>
           <span>Grid Division</span>
         </div>
 
+        {/* Column Slider */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Grid Matrix Dimension</span>
-            <span className={styles.controlValue}>{gridDimension} x {gridDimension}</span>
+            <span className={styles.controlLabel}>
+              {tileShapeMode === "square" ? "Square Tile Grid Columns" : "Grid Columns"}
+            </span>
+            <span className={styles.controlValue}>{gridCols} Cols</span>
           </div>
           <input
             type="range"
             min={1}
-            max={25}
+            max={30}
             step={1}
-            value={gridDimension}
-            onChange={(e) => setGridDimension(parseInt(e.target.value))}
+            value={gridCols}
+            onChange={(e) => setGridCols(parseInt(e.target.value))}
           />
         </div>
 
-        {/* Grid Line Display Toggle (Show Grid Lines ON / OFF) */}
+        {/* Row Slider (Only active in Rectangle Mode) */}
+        {tileShapeMode === "rectangle" && (
+          <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+            <div className={styles.controlHeader}>
+              <span className={styles.controlLabel}>Grid Rows</span>
+              <span className={styles.controlValue}>{gridRows} Rows</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={30}
+              step={1}
+              value={gridRows}
+              onChange={(e) => setGridRows(parseInt(e.target.value))}
+            />
+          </div>
+        )}
+
+        {/* Grid Line Display Toggle */}
         <div className={styles.sectionHeader}>
           <span>Line Display Settings</span>
         </div>
@@ -430,7 +516,7 @@ export const MosaicEffectGenerator: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Click Grid Tiles to Select ({selectedTiles.size} Tiles Selected)
+          IMG300 Studio • {tileShapeMode.toUpperCase()} Mode • Click Grid Tiles to Select ({selectedTiles.size} Selected)
         </div>
       </div>
     </div>
