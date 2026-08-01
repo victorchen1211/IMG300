@@ -15,8 +15,8 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // 5-Tile Cross Matrix Controls (Tiles 1, 2, 3, 4, 5)
-  const [tileSize, setTileSize] = useState<number>(180); // Square Tile Size (50px ~ 220px)
+  // 9-Tile 3x3 Matrix Controls (6 4 7 / 1 2 3 / 8 5 9)
+  const [tileSize, setTileSize] = useState<number>(160); // Square Tile Size (50px ~ 220px)
   const [cropPadding, setCropPadding] = useState<number>(30);
   const [gridOffset, setGridOffset] = useState<number>(100); // Default 100% = Initial Convergence State
 
@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 5-Tile Cross Matrix: Tile 4 (Top), Tiles 1, 2 (Center), 3, Tile 5 (Bottom)
+  // Main Render Loop - 9-Tile 3x3 Matrix: (6 4 7 / 1 2 3 / 8 5 9)
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -184,7 +184,7 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render 5-TILE CROSS MATRIX (Tiles 1, 2, 3, 4, 5)
+      // 2. Render FULL 9-TILE 3x3 MATRIX (6 4 7 / 1 2 3 / 8 5 9)
       const normCrop = rawFaceCropRef.current;
       const totalGridW = 3 * tileSize;
       const totalGridH = 3 * tileSize;
@@ -192,16 +192,20 @@ export const SocialMediaIdentity: React.FC = () => {
       const gridStartX = (w - totalGridW) / 2;
       const gridStartY = (h - totalGridH) / 2;
 
-      // Define 5 Tile Specifications: (ID, Col, Row)
-      // Tile 4 (Top: c=1, r=0)
-      // Tile 1 (Left: c=0, r=1), Tile 2 (Center: c=1, r=1), Tile 3 (Right: c=2, r=1)
-      // Tile 5 (Bottom: c=1, r=2)
+      // Define 9 Tile Specifications: (ID, Col, Row)
+      // Top Row:    Tile 6 (c=0, r=0), Tile 4 (c=1, r=0), Tile 7 (c=2, r=0)
+      // Middle Row: Tile 1 (c=0, r=1), Tile 2 (c=1, r=1), Tile 3 (c=2, r=1)
+      // Bottom Row: Tile 8 (c=0, r=2), Tile 5 (c=1, r=2), Tile 9 (c=2, r=2)
       const tiles = [
+        { id: 6, c: 0, r: 0 },
         { id: 4, c: 1, r: 0 },
+        { id: 7, c: 2, r: 0 },
         { id: 1, c: 0, r: 1 },
         { id: 2, c: 1, r: 1 },
         { id: 3, c: 2, r: 1 },
-        { id: 5, c: 1, r: 2 }
+        { id: 8, c: 0, r: 2 },
+        { id: 5, c: 1, r: 2 },
+        { id: 9, c: 2, r: 2 }
       ];
 
       if (normCrop) {
@@ -223,16 +227,17 @@ export const SocialMediaIdentity: React.FC = () => {
         const baseOutwardStep = 0.20; // 20% initial offset at 50% neutral slider
         const signedFactor = (gridOffset - 50) / 50; // -1.0 to +1.0
 
-        // Render each of the 5 cross tiles
+        // Render each of the 9 tiles
         tiles.forEach(({ id, c, r }) => {
           const tileX = gridStartX + c * tileSize;
           const tileY = gridStartY + r * tileSize;
 
-          // Inward Convergence Shift Vector toward center Tile 2 (c=1, r=1):
-          // Tile 1 (Left c=0, r=1): inwardCol = +1 -> shifts RIGHT (→)
-          // Tile 3 (Right c=2, r=1): inwardCol = -1 -> shifts LEFT (←)
-          // Tile 4 (Top c=1, r=0): inwardRow = +1 -> shifts DOWN (↓)
-          // Tile 5 (Bottom c=1, r=2): inwardRow = -1 -> shifts UP (↑)
+          // Inward Convergence Vector Shift toward center Tile 2 (c=1, r=1):
+          // Diagonal Corners:
+          // Tile 6 (c=0, r=0): inwardCol=+1, inwardRow=+1 -> shifts Down-Right (↘)
+          // Tile 7 (c=2, r=0): inwardCol=-1, inwardRow=+1 -> shifts Down-Left (↙)
+          // Tile 8 (c=0, r=2): inwardCol=+1, inwardRow=-1 -> shifts Up-Right (↗)
+          // Tile 9 (c=2, r=2): inwardCol=-1, inwardRow=-1 -> shifts Up-Left (↖)
           const inwardCol = 1 - c;
           const inwardRow = 1 - r;
 
@@ -271,7 +276,7 @@ export const SocialMediaIdentity: React.FC = () => {
           ctx.lineWidth = 1.5;
           ctx.strokeRect(tileX, tileY, tileSize, tileSize);
 
-          // Tile Label Badge (1, 2, 3, 4, 5)
+          // Tile Label Badge (1-9)
           ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
           ctx.fillRect(tileX + 6, tileY + 6, 24, 18);
           ctx.fillStyle = id === 2 ? "#00ff22" : "#ffffff";
@@ -284,14 +289,14 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("SEARCHING FACE REGION FOR 5 CROSS TILES...", w / 2, h / 2);
+        ctx.fillText("SEARCHING FACE REGION FOR 9 TILES...", w / 2, h / 2);
       }
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW 5 CROSS TILES (1, 2, 3, 4, 5)", w / 2, h / 2);
+      ctx.fillText("START WEBCAM TO VIEW 9-TILE MATRIX (6 4 7 / 1 2 3 / 8 5 9)", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -314,7 +319,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>5-Tile Cross Matrix (1, 2, 3, 4, 5)</div>
+        <div className={styles.brandSubtitle}>9-Tile 3x3 Matrix (6 4 7 / 1 2 3 / 8 5 9)</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -354,9 +359,9 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* 5 Tiles Controls */}
+        {/* 9 Tiles Controls */}
         <div className={styles.sectionHeader}>
-          <span>5-Tile Cross Settings</span>
+          <span>9-Tile 3x3 Settings</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
@@ -374,7 +379,7 @@ export const SocialMediaIdentity: React.FC = () => {
           />
         </div>
 
-        {/* Horizontal & Vertical Convergence Shift Offset */}
+        {/* Diagonal & Directional Convergence Shift Offset */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
             <span className={styles.controlLabel}>Inward Convergence Shift</span>
@@ -427,7 +432,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
             <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED (TILES 1,2,3,4,5)" : "SEARCHING..."}
+              {faceDetected ? "TRACKED (TILES 1-9)" : "SEARCHING..."}
             </span>
           </div>
         </div>
@@ -458,7 +463,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 5-Tile Cross Matrix (Tile 4 Top, Tiles 1-2-3 Center, Tile 5 Bottom)
+          IMG300 Studio • Full 9-Tile 3x3 Matrix (6 4 7 / 1 2 3 / 8 5 9)
         </div>
       </div>
     </div>
