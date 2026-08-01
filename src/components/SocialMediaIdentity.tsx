@@ -18,7 +18,9 @@ export const SocialMediaIdentity: React.FC = () => {
   // 9-Tile 3x3 Matrix Controls (6 4 7 / 1 2 3 / 8 5 9)
   const [tileSize, setTileSize] = useState<number>(160); // Square Tile Size (50px ~ 220px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(100); // Default 100% = Initial Convergence State
+
+  // Fixed 100% Inward Shift Baseline
+  const gridOffset = 100;
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -224,8 +226,8 @@ export const SocialMediaIdentity: React.FC = () => {
         const cropWNorm = baseMaxX - baseMinX;
         const cropHNorm = baseMaxY - baseMinY;
 
-        const baseOutwardStep = 0.20; // 20% initial offset at 50% neutral slider
-        const signedFactor = (gridOffset - 50) / 50; // -1.0 to +1.0
+        const baseOutwardStep = 0.20;
+        const signedFactor = 1.0; // Fixed 100% Inward Shift Baseline
 
         // Render each of the 9 tiles
         tiles.forEach(({ id, c, r }) => {
@@ -233,16 +235,11 @@ export const SocialMediaIdentity: React.FC = () => {
           const tileY = gridStartY + r * tileSize;
 
           // Inward Convergence Vector Shift toward center Tile 2 (c=1, r=1):
-          // Diagonal Corners:
-          // Tile 6 (c=0, r=0): inwardCol=+1, inwardRow=+1 -> shifts Down-Right (↘)
-          // Tile 7 (c=2, r=0): inwardCol=-1, inwardRow=+1 -> shifts Down-Left (↙)
-          // Tile 8 (c=0, r=2): inwardCol=+1, inwardRow=-1 -> shifts Up-Right (↗)
-          // Tile 9 (c=2, r=2): inwardCol=-1, inwardRow=-1 -> shifts Up-Left (↖)
           const inwardCol = 1 - c;
           const inwardRow = 1 - r;
 
-          const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.48);
-          const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.48);
+          const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.6);
+          const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.6);
 
           let tileMinX = baseMinX + netOffsetCol * cropWNorm;
           let tileMinY = baseMinY - netOffsetRow * cropHNorm;
@@ -300,7 +297,7 @@ export const SocialMediaIdentity: React.FC = () => {
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, tileSize, cropPadding, gridOffset]);
+  }, [isCameraActive, tileSize, cropPadding]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -379,22 +376,6 @@ export const SocialMediaIdentity: React.FC = () => {
           />
         </div>
 
-        {/* Diagonal & Directional Convergence Shift Offset */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Inward Convergence Shift</span>
-            <span className={styles.controlValue}>{gridOffset}%</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={gridOffset}
-            onChange={(e) => setGridOffset(parseInt(e.target.value))}
-          />
-        </div>
-
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
             <span className={styles.controlLabel}>Face Region Crop Margin</span>
@@ -463,7 +444,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Full 9-Tile 3x3 Matrix (6 4 7 / 1 2 3 / 8 5 9)
+          IMG300 Studio • Clean 9-Tile 3x3 Matrix (6 4 7 / 1 2 3 / 8 5 9)
         </div>
       </div>
     </div>
