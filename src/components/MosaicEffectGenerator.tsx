@@ -38,6 +38,7 @@ export const MosaicEffectGenerator: React.FC = () => {
   // Tile Effect Controls (Master Toggle + Mode Selection)
   const [isEffectEnabled, setIsEffectEnabled] = useState<boolean>(true); // Master Effect Toggle
   const [selectedEffectMode, setSelectedEffectMode] = useState<"cutout" | "mosaic" | "blur" | "invert">("cutout");
+  const [showSelectedTileBorder, setShowSelectedTileBorder] = useState<boolean>(true); // Selected Tile Border ON / OFF
   const [mosaicBlockSize, setMosaicBlockSize] = useState<number>(12); // Mosaic pixel block size (4px ~ 32px)
   const [blurRadius, setBlurRadius] = useState<number>(10); // Blur radius (4px ~ 24px)
 
@@ -245,10 +246,12 @@ export const MosaicEffectGenerator: React.FC = () => {
           ctx.fillStyle = hexToRgba(lineColor, 25);
           ctx.fillRect(tileX, tileY, tileW, tileH);
 
-          // Glowing Outline for Selected Tile
-          ctx.strokeStyle = lineColor;
-          ctx.lineWidth = Math.max(3, lineWidth + 1);
-          ctx.strokeRect(tileX, tileY, tileW, tileH);
+          // Glowing Outline for Selected Tile (Only if showSelectedTileBorder is ON)
+          if (showSelectedTileBorder) {
+            ctx.strokeStyle = lineColor;
+            ctx.lineWidth = Math.max(3, lineWidth + 1);
+            ctx.strokeRect(tileX, tileY, tileW, tileH);
+          }
           ctx.restore();
         }
       });
@@ -536,6 +539,44 @@ export const MosaicEffectGenerator: React.FC = () => {
                   onClick={() => setSelectedEffectMode("invert")}
                 >
                   🔄 Invert
+                </button>
+              </div>
+            </div>
+
+            {/* Selected Tile Border Toggle */}
+            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+              <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+                <span className={styles.controlLabel}>Selected Tile Border</span>
+                <span className={styles.controlValue}>{showSelectedTileBorder ? "VISIBLE" : "HIDDEN"}</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    background: showSelectedTileBorder ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    borderColor: showSelectedTileBorder ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
+                    color: showSelectedTileBorder ? "#00e5ff" : "#ffffff"
+                  }}
+                  onClick={() => setShowSelectedTileBorder(true)}
+                >
+                  ✓ Border On
+                </button>
+                <button
+                  style={{
+                    flex: 1,
+                    padding: "8px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    background: !showSelectedTileBorder ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                    borderColor: !showSelectedTileBorder ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
+                    color: !showSelectedTileBorder ? "#ff3b30" : "#ffffff"
+                  }}
+                  onClick={() => setShowSelectedTileBorder(false)}
+                >
+                  ✕ Border Off
                 </button>
               </div>
             </div>
