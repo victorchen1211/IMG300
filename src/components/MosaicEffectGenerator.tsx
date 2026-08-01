@@ -153,6 +153,9 @@ export const MosaicEffectGenerator: React.FC = () => {
 
       // Render Selected Tile Style Effects (Cutout, Mosaic, Blur, Invert)
       if (isEffectEnabled && selectedTiles.size > 0) {
+        // Calculate border offset to subtract border area from tile effects
+        const borderInset = (showReferenceGrid && borderWidth > 0 && borderColor !== "transparent") ? borderWidth / 2 : 0;
+
         selectedTiles.forEach((tileId) => {
           const [r, c] = tileId.split(",").map(Number);
           if (r < numRows && c < numCols) {
@@ -161,27 +164,33 @@ export const MosaicEffectGenerator: React.FC = () => {
             const tileX = drawX + c * tileW;
             const tileY = drawY + r * tileH;
 
+            // Effective inner tile bounds subtracting border area
+            const effX = tileX + borderInset;
+            const effY = tileY + borderInset;
+            const effW = Math.max(1, tileW - 2 * borderInset);
+            const effH = Math.max(1, tileH - 2 * borderInset);
+
             const srcX = (c / numCols) * sourceImage.naturalWidth;
             const srcY = (r / numRows) * sourceImage.naturalHeight;
             const srcW = sourceImage.naturalWidth / numCols;
             const srcH = sourceImage.naturalHeight / numRows;
 
             if (selectedEffectMode === "cutout") {
-              // 1. Cutout Mode: Fills with configurable background color or transparent
+              // 1. Cutout Mode: Fills inner inset area with background color or transparent
               ctx.save();
-              ctx.clearRect(tileX, tileY, tileW, tileH);
+              ctx.clearRect(effX, effY, effW, effH);
 
               if (cutoutBgColor !== "transparent") {
                 ctx.fillStyle = cutoutBgColor;
-                ctx.fillRect(tileX, tileY, tileW, tileH);
+                ctx.fillRect(effX, effY, effW, effH);
               }
               ctx.restore();
             } else if (selectedEffectMode === "mosaic") {
-              // 2. Mosaic Mode: Pixelates tile into configurable block size
+              // 2. Mosaic Mode: Pixelates inner inset area into configurable block size
               ctx.save();
               const blockSize = Math.max(4, mosaicBlockSize);
-              const tempW = Math.max(1, Math.floor(tileW / blockSize));
-              const tempH = Math.max(1, Math.floor(tileH / blockSize));
+              const tempW = Math.max(1, Math.floor(effW / blockSize));
+              const tempH = Math.max(1, Math.floor(effH / blockSize));
 
               const tempCanvas = document.createElement("canvas");
               tempCanvas.width = tempW;
@@ -193,33 +202,33 @@ export const MosaicEffectGenerator: React.FC = () => {
                 tempCtx.drawImage(sourceImage, srcX, srcY, srcW, srcH, 0, 0, tempW, tempH);
 
                 ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(tempCanvas, 0, 0, tempW, tempH, tileX, tileY, tileW, tileH);
+                ctx.drawImage(tempCanvas, 0, 0, tempW, tempH, effX, effY, effW, effH);
               }
               ctx.restore();
             } else if (selectedEffectMode === "blur") {
-              // 3. Blur Mode
+              // 3. Blur Mode inside inner inset bounds
               ctx.save();
               ctx.beginPath();
-              ctx.rect(tileX, tileY, tileW, tileH);
+              ctx.rect(effX, effY, effW, effH);
               ctx.clip();
               ctx.filter = `blur(${Math.max(4, blurRadius)}px)`;
-              ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, tileX, tileY, tileW, tileH);
+              ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, effX, effY, effW, effH);
               ctx.restore();
             } else if (selectedEffectMode === "invert") {
-              // 4. Invert Mode
+              // 4. Invert Mode inside inner inset bounds
               ctx.save();
               ctx.beginPath();
-              ctx.rect(tileX, tileY, tileW, tileH);
+              ctx.rect(effX, effY, effW, effH);
               ctx.clip();
               ctx.filter = "invert(100%)";
-              ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, tileX, tileY, tileW, tileH);
+              ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, effX, effY, effW, effH);
               ctx.restore();
             }
           }
         });
       }
 
-      // Render Selected Tile Selection Overlay Tint
+      // Render Selected Tile Selection Overlay Tint inside inset bounds
       selectedTiles.forEach((tileId) => {
         const [r, c] = tileId.split(",").map(Number);
         if (r < numRows && c < numCols) {
@@ -228,9 +237,15 @@ export const MosaicEffectGenerator: React.FC = () => {
           const tileX = drawX + c * tileW;
           const tileY = drawY + r * tileH;
 
+          const borderInset = (showReferenceGrid && borderWidth > 0 && borderColor !== "transparent") ? borderWidth / 2 : 0;
+          const effX = tileX + borderInset;
+          const effY = tileY + borderInset;
+          const effW = Math.max(1, tileW - 2 * borderInset);
+          const effH = Math.max(1, tileH - 2 * borderInset);
+
           ctx.save();
           ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-          ctx.fillRect(tileX, tileY, tileW, tileH);
+          ctx.fillRect(effX, effY, effW, effH);
           ctx.restore();
         }
       });
