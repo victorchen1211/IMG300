@@ -18,7 +18,7 @@ export const SocialMediaIdentity: React.FC = () => {
   // 3x3 Face Region Grid Controls
   const [tileSize, setTileSize] = useState<number>(160); // Square Tile Size (50px ~ 220px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(15); // Percentage crop offset for outer tiles
+  const [gridOffset, setGridOffset] = useState<number>(20); // Inward Convergence Offset Percentage
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 3x3 Square Face Region Grid Matrix
+  // Main Render Loop - 3x3 Inward Convergence Face Region Grid Matrix
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -184,7 +184,7 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render 3x3 SQUARE FACE REGION GRID MATRIX
+      // 2. Render 3x3 SQUARE FACE REGION GRID MATRIX (INWARD CONVERGENCE)
       const normCrop = rawFaceCropRef.current;
       const gridCols = 3;
       const gridRows = 3;
@@ -216,14 +216,16 @@ export const SocialMediaIdentity: React.FC = () => {
             const tileX = gridStartX + c * tileSize;
             const tileY = gridStartY + r * tileSize;
 
-            // Offset crop calculation for outer 8 tiles relative to center (1,1)
-            const offCol = c - 1; // -1, 0, 1
-            const offRow = r - 1; // -1, 0, 1
+            // Inward Convergence Shift Vector: Outer tiles shift INWARD towards center (1,1)
+            // c=0 (left) -> +1 (shift right); c=2 (right) -> -1 (shift left)
+            // r=0 (top)  -> +1 (shift down);  r=2 (bottom)-> -1 (shift up)
+            const inwardCol = 1 - c;
+            const inwardRow = 1 - r;
 
             const shiftFraction = (gridOffset / 100);
 
-            let tileMinX = baseMinX + offCol * (cropWNorm * shiftFraction);
-            let tileMinY = baseMinY + offRow * (cropHNorm * shiftFraction);
+            let tileMinX = baseMinX + inwardCol * (cropWNorm * shiftFraction);
+            let tileMinY = baseMinY + inwardRow * (cropHNorm * shiftFraction);
             let tileMaxX = tileMinX + cropWNorm;
             let tileMaxY = tileMinY + cropHNorm;
 
@@ -290,7 +292,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>3x3 Face Region Grid Matrix</div>
+        <div className={styles.brandSubtitle}>3x3 Inward Convergence Grid</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -352,13 +354,13 @@ export const SocialMediaIdentity: React.FC = () => {
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Outer Tiles Shift</span>
+            <span className={styles.controlLabel}>Inward Convergence Shift</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
             type="range"
             min={0}
-            max={40}
+            max={60}
             step={5}
             value={gridOffset}
             onChange={(e) => setGridOffset(parseInt(e.target.value))}
@@ -402,7 +404,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
             <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED (3x3)" : "SEARCHING..."}
+              {faceDetected ? "TRACKED (3x3 INWARD)" : "SEARCHING..."}
             </span>
           </div>
         </div>
@@ -433,7 +435,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 3x3 Square Face Region Grid Matrix (9 Tiles)
+          IMG300 Studio • 3x3 Square Face Region Inward Convergence Grid Matrix
         </div>
       </div>
     </div>
