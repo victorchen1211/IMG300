@@ -235,39 +235,10 @@ export const MosaicEffectGenerator: React.FC = () => {
         }
       });
 
-      // Render Entire Grid Borders (Border Thickness & Border Color apply to ALL tiles)
-      if (borderWidth > 0 && borderColor !== "transparent") {
-        ctx.save();
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = borderWidth;
-
-        // Vertical Grid Lines across Entire Image
-        for (let c = 1; c < numCols; c++) {
-          const lineX = drawX + (c / numCols) * drawW;
-          ctx.beginPath();
-          ctx.moveTo(lineX, drawY);
-          ctx.lineTo(lineX, drawY + drawH);
-          ctx.stroke();
-        }
-
-        // Horizontal Grid Lines across Entire Image
-        for (let r = 1; r < numRows; r++) {
-          const lineY = drawY + (r / numRows) * drawH;
-          ctx.beginPath();
-          ctx.moveTo(drawX, lineY);
-          ctx.lineTo(drawX + drawW, lineY);
-          ctx.stroke();
-        }
-
-        // Outer Image Frame Border Line
-        ctx.strokeRect(drawX, drawY, drawW, drawH);
-        ctx.restore();
-      }
-
-      // Render Reference Base Grid Overlay (Subtle Studio Alignment Guide Lines)
+      // 1. Render Reference Base Grid Overlay (Subtle Studio Alignment Guide Lines)
       if (showReferenceGrid) {
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
         ctx.lineWidth = 1;
 
         // Vertical Guide Lines
@@ -290,6 +261,25 @@ export const MosaicEffectGenerator: React.FC = () => {
 
         // Outer Image Frame Guide Border
         ctx.strokeRect(drawX, drawY, drawW, drawH);
+        ctx.restore();
+      }
+
+      // 2. Render Entire Grid Tile Borders (Border Thickness & Border Color apply to ALL tiles)
+      if (borderWidth > 0 && borderColor !== "transparent") {
+        ctx.save();
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+
+        const tileW = drawW / numCols;
+        const tileH = drawH / numRows;
+
+        for (let r = 0; r < numRows; r++) {
+          for (let c = 0; c < numCols; c++) {
+            const tileX = drawX + c * tileW;
+            const tileY = drawY + r * tileH;
+            ctx.strokeRect(tileX, tileY, tileW, tileH);
+          }
+        }
         ctx.restore();
       }
     } else {
