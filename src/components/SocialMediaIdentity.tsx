@@ -15,9 +15,9 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // Dynamic N x N Matrix Controls (1x1 ~ 10x10)
-  const [gridDimension, setGridDimension] = useState<number>(10); // N x N (1 to 10, default 10)
-  const [tileSize, setTileSize] = useState<number>(64); // Tile Size
+  // Dynamic Odd N x N Matrix Controls (1x1, 3x3, 5x5, 7x7, 9x9, 11x11 - Odd Dimensions Only for Exact Center Anchor)
+  const [gridDimension, setGridDimension] = useState<number>(9); // Default 9x9 Odd Matrix
+  const [tileSize, setTileSize] = useState<number>(68); // Tile Size
   const [cropPadding, setCropPadding] = useState<number>(30);
 
   // Auto-adjust tile size when gridDimension changes
@@ -114,7 +114,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - Dynamic N x N Face Region Inward Matrix
+  // Main Render Loop - Odd N x N Matrix (Exact Center Tile Anchor)
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -190,7 +190,7 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render DYNAMIC N x N MATRIX (1x1 to 10x10)
+      // 2. Render ODD N x N MATRIX (1x1, 3x3, 5x5, 7x7, 9x9, 11x11)
       const normCrop = rawFaceCropRef.current;
       const n = gridDimension;
       const totalGridW = n * tileSize;
@@ -199,7 +199,7 @@ export const SocialMediaIdentity: React.FC = () => {
       const gridStartX = (w - totalGridW) / 2;
       const gridStartY = (h - totalGridH) / 2;
 
-      // Center anchor coordinate in grid space: C = (N - 1) / 2
+      // Exact single center anchor coordinate: C = (N - 1) / 2
       const centerCoord = (n - 1) / 2;
 
       if (normCrop) {
@@ -219,21 +219,20 @@ export const SocialMediaIdentity: React.FC = () => {
         const cropHNorm = baseMaxY - baseMinY;
 
         const baseOutwardStep = 0.20;
-        const signedFactor = 1.0; // Inward convergence baseline
+        const signedFactor = 1.0;
 
-        // Render each of the N x N tiles
+        // Render each of the N x N tiles (Odd matrix)
         for (let r = 0; r < n; r++) {
           for (let c = 0; c < n; c++) {
             const tileX = gridStartX + c * tileSize;
             const tileY = gridStartY + r * tileSize;
 
-            // Inward Convergence Vector toward grid center (centerCoord, centerCoord):
-            // Normalized distance ratio based on grid dimension N
+            // Inward Convergence Vector toward exact center tile (centerCoord, centerCoord):
             const inwardCol = centerCoord > 0 ? (centerCoord - c) / centerCoord : 0;
             const inwardRow = centerCoord > 0 ? (centerCoord - r) / centerCoord : 0;
 
-            const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.48);
-            const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.48);
+            const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.8);
+            const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.8);
 
             let tileMinX = baseMinX + netOffsetCol * cropWNorm;
             let tileMinY = baseMinY - netOffsetRow * cropHNorm;
@@ -267,10 +266,10 @@ export const SocialMediaIdentity: React.FC = () => {
             ctx.lineWidth = 1;
             ctx.strokeRect(tileX, tileY, tileSize, tileSize);
 
-            // Display tile label badge for small grids (N <= 5)
+            // Display tile label badge for smaller odd grids (N <= 5)
             if (n <= 5) {
               const tileId = r * n + c + 1;
-              const isCenter = Math.abs(c - centerCoord) < 0.5 && Math.abs(r - centerCoord) < 0.5;
+              const isCenter = Math.abs(c - centerCoord) < 0.1 && Math.abs(r - centerCoord) < 0.1;
               ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
               ctx.fillRect(tileX + 4, tileY + 4, 22, 16);
               ctx.fillStyle = isCenter ? "#00ff22" : "#ffffff";
@@ -285,14 +284,14 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText(`SEARCHING FACE REGION FOR ${n}x${n} MATRIX...`, w / 2, h / 2);
+        ctx.fillText(`SEARCHING FACE REGION FOR ${n}x${n} ODD MATRIX...`, w / 2, h / 2);
       }
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText(`START WEBCAM TO VIEW ${gridDimension}x${gridDimension} FACE MATRIX`, w / 2, h / 2);
+      ctx.fillText(`START WEBCAM TO VIEW ${gridDimension}x${gridDimension} ODD FACE MATRIX`, w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -315,7 +314,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>{gridDimension}x{gridDimension} Face Region Matrix</div>
+        <div className={styles.brandSubtitle}>{gridDimension}x{gridDimension} Odd Face Region Matrix</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -355,22 +354,22 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* Dynamic N x N Matrix Controls */}
+        {/* Dynamic Odd N x N Matrix Controls (Odd Dimensions Only for Exact Center Anchor) */}
         <div className={styles.sectionHeader}>
-          <span>Matrix Dimension Settings</span>
+          <span>Odd Matrix Dimension Settings</span>
         </div>
 
-        {/* Grid Dimension N x N Slider (1 to 10) */}
+        {/* Grid Dimension Odd N x N Slider (1, 3, 5, 7, 9, 11) */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Grid Matrix Dimension</span>
+            <span className={styles.controlLabel}>Odd Dimension (Center Tile)</span>
             <span className={styles.controlValue}>{gridDimension} x {gridDimension}</span>
           </div>
           <input
             type="range"
             min={1}
-            max={10}
-            step={1}
+            max={11}
+            step={2}
             value={gridDimension}
             onChange={(e) => setGridDimension(parseInt(e.target.value))}
           />
@@ -459,7 +458,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Dynamic {gridDimension}x{gridDimension} Face Region Inward Convergence Matrix ({gridDimension * gridDimension} Tiles)
+          IMG300 Studio • Odd {gridDimension}x{gridDimension} Face Region Inward Matrix ({gridDimension * gridDimension} Tiles)
         </div>
       </div>
     </div>
