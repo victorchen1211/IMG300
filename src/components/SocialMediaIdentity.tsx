@@ -227,8 +227,8 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.restore();
 
         // Cyber Glowing Corner Brackets for Center Cropped Face
-        const bracketLength = 20;
-        ctx.lineWidth = 4;
+        const bracketLength = Math.max(6, Math.min(20, Math.floor(centerW * 0.15)));
+        ctx.lineWidth = Math.max(2, Math.min(4, Math.floor(centerW * 0.03)));
         ctx.strokeStyle = "#00ff22";
 
         // Top-Left
@@ -402,9 +402,9 @@ export const SocialMediaIdentity: React.FC = () => {
           </div>
           <input
             type="range"
-            min={200}
+            min={50}
             max={560}
-            step={20}
+            step={10}
             value={centerDisplaySize}
             onChange={(e) => setCenterDisplaySize(parseInt(e.target.value))}
           />
@@ -417,7 +417,7 @@ export const SocialMediaIdentity: React.FC = () => {
           </div>
           <input
             type="range"
-            min={10}
+            min={0}
             max={80}
             step={5}
             value={cropPadding}
