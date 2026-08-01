@@ -8,7 +8,6 @@ export const SocialMediaIdentity: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sampleCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Control State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
@@ -16,13 +15,13 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // Refs for MediaPipe & Smooth Box Animation
+  // Refs for MediaPipe & Live Bounding Box
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastVideoTimeRef = useRef<number>(-1);
-  const lastBoundingBoxRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const activeBoxRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
 
-  // Initialize MediaPipe FaceLandmarker Model with Fallback
+  // Initialize MediaPipe FaceLandmarker Model
   useEffect(() => {
     let isMounted = true;
     const initMediaPipe = async () => {
@@ -32,11 +31,11 @@ export const SocialMediaIdentity: React.FC = () => {
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
 
-        setModelStatus("Downloading Face Task...");
+        setModelStatus("Loading Face Task...");
         let faceLandmarker: FaceLandmarker | null = null;
 
         try {
-          // GPU Delegate
+          // Attempt 1: GPU Delegate
           faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
               modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -46,7 +45,7 @@ export const SocialMediaIdentity: React.FC = () => {
             numFaces: 1
           });
         } catch (gpuErr) {
-          // CPU Fallback
+          // Attempt 2: CPU Fallback
           faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
               modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -62,9 +61,9 @@ export const SocialMediaIdentity: React.FC = () => {
           setModelStatus("AI Model Ready");
         }
       } catch (err: any) {
-        console.warn("MediaPipe load warning, using fast fallback tracker:", err);
+        console.warn("MediaPipe load error:", err);
         if (isMounted) {
-          setModelStatus("Fast Tracker Active");
+          setModelStatus("Model Load Error");
         }
       }
     };
@@ -103,82 +102,10 @@ export const SocialMediaIdentity: React.FC = () => {
     }
     setIsCameraActive(false);
     setFaceDetected(false);
-    lastBoundingBoxRef.current = null;
+    activeBoxRef.current = null;
   };
 
-  // Fast Skin/Face Centroid Tracker Fallback (Guarantees Bounding Box Always Appears Instantaneously)
-  const detectFaceFallback = (video: HTMLVideoElement, canvasW: number, canvasH: number) => {
-    const sampleCols = 40;
-    const sampleRows = 30;
-
-    if (!sampleCanvasRef.current) {
-      sampleCanvasRef.current = document.createElement("canvas");
-    }
-    const oCanvas = sampleCanvasRef.current;
-    if (oCanvas.width !== sampleCols || oCanvas.height !== sampleRows) {
-      oCanvas.width = sampleCols;
-      oCanvas.height = sampleRows;
-    }
-    const oCtx = oCanvas.getContext("2d");
-    if (!oCtx) return null;
-
-    // Draw video frame mirrored to sample canvas
-    oCtx.save();
-    oCtx.translate(sampleCols, 0);
-    oCtx.scale(-1, 1);
-    oCtx.drawImage(video, 0, 0, sampleCols, sampleRows);
-    oCtx.restore();
-
-    const imgData = oCtx.getImageData(0, 0, sampleCols, sampleRows).data;
-
-    let minX = sampleCols, maxX = 0, minY = sampleRows, maxY = 0;
-    let skinPixelCount = 0;
-
-    for (let r = 0; r < sampleRows; r++) {
-      for (let c = 0; c < sampleCols; c++) {
-        const idx = (r * sampleCols + c) * 4;
-        const red = imgData[idx];
-        const green = imgData[idx + 1];
-        const blue = imgData[idx + 2];
-
-        // Skin Tone Color Masking (YCbCr / RGB skin heuristics)
-        if (
-          red > 60 && green > 40 && blue > 20 &&
-          red > green && red > blue &&
-          Math.abs(red - green) > 15
-        ) {
-          skinPixelCount++;
-          if (c < minX) minX = c;
-          if (c > maxX) maxX = c;
-          if (r < minY) minY = r;
-          if (r > maxY) maxY = r;
-        }
-      }
-    }
-
-    if (skinPixelCount > 30) {
-      const scaleX = canvasW / sampleCols;
-      const scaleY = canvasH / sampleRows;
-
-      const padding = 15;
-      const boxX = minX * scaleX - padding;
-      const boxY = minY * scaleY - padding;
-      const boxW = (maxX - minX) * scaleX + padding * 2;
-      const boxH = (maxY - minY) * scaleY + padding * 2;
-
-      return { x: boxX, y: boxY, w: boxW, h: boxH };
-    }
-
-    // Default Centered Box Prompt if face is not found
-    return {
-      x: canvasW * 0.35,
-      y: canvasH * 0.2,
-      w: canvasW * 0.3,
-      h: canvasH * 0.5
-    };
-  };
-
-  // Main Render Loop - Step 1: Real-time Face AI & Bounding Box Framing
+  // Main Render Loop - Step 1: Real-Time Dynamic Face Tracking Bounding Box
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -199,19 +126,19 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.drawImage(video, 0, 0, w, h);
       ctx.restore();
 
-      // 2. AI Face Landmark Detection
-      let newBox: { x: number; y: number; w: number; h: number } | null = null;
-
+      // 2. Perform AI Face Landmark Detection
       if (faceLandmarkerRef.current) {
         try {
+          const nowMs = performance.now();
           if (video.currentTime !== lastVideoTimeRef.current) {
             lastVideoTimeRef.current = video.currentTime;
-            const results = faceLandmarkerRef.current.detectForVideo(video, performance.now());
+            const results = faceLandmarkerRef.current.detectForVideo(video, nowMs);
 
             if (results.faceLandmarks && results.faceLandmarks.length > 0) {
               setFaceDetected(true);
               const landmarks = results.faceLandmarks[0];
 
+              // Calculate bounding box across all face landmarks (jaw, eyes, nose, mouth, forehead)
               let minX = 1, maxX = 0, minY = 1, maxY = 0;
               landmarks.forEach((pt) => {
                 if (pt.x < minX) minX = pt.x;
@@ -221,50 +148,38 @@ export const SocialMediaIdentity: React.FC = () => {
               });
 
               const padding = 20;
-              const boxX = (1 - maxX) * w - padding;
-              const boxY = minY * h - padding;
-              const boxW = (maxX - minX) * w + padding * 2;
-              const boxH = (maxY - minY) * h + padding * 2;
+              // Mirrored Canvas Calculation
+              const targetX = (1 - maxX) * w - padding;
+              const targetY = minY * h - padding;
+              const targetW = (maxX - minX) * w + padding * 2;
+              const targetH = (maxY - minY) * h + padding * 2;
 
-              newBox = { x: boxX, y: boxY, w: boxW, h: boxH };
+              // Smooth 60FPS motion tracking interpolation
+              if (!activeBoxRef.current) {
+                activeBoxRef.current = { x: targetX, y: targetY, w: targetW, h: targetH };
+              } else {
+                const lerpSpeed = 0.4;
+                activeBoxRef.current = {
+                  x: activeBoxRef.current.x + (targetX - activeBoxRef.current.x) * lerpSpeed,
+                  y: activeBoxRef.current.y + (targetY - activeBoxRef.current.y) * lerpSpeed,
+                  w: activeBoxRef.current.w + (targetW - activeBoxRef.current.w) * lerpSpeed,
+                  h: activeBoxRef.current.h + (targetH - activeBoxRef.current.h) * lerpSpeed
+                };
+              }
             } else {
               setFaceDetected(false);
+              activeBoxRef.current = null;
             }
           }
         } catch (e) {
-          // Frame skip
+          // Detection frame skip
         }
       }
 
-      // If MediaPipe model hasn't returned a frame yet, use fast skin/centroid tracker fallback
-      if (!newBox && !lastBoundingBoxRef.current) {
-        const fallbackBox = detectFaceFallback(video, w, h);
-        if (fallbackBox) {
-          newBox = fallbackBox;
-          setFaceDetected(true);
-        }
-      }
-
-      // 3. Smooth Bounding Box Interpolation across frames
-      if (newBox) {
-        if (!lastBoundingBoxRef.current) {
-          lastBoundingBoxRef.current = newBox;
-        } else {
-          // Smooth Lerp Transition (Linear Interpolation)
-          const lerpRate = 0.35;
-          lastBoundingBoxRef.current = {
-            x: lastBoundingBoxRef.current.x + (newBox.x - lastBoundingBoxRef.current.x) * lerpRate,
-            y: lastBoundingBoxRef.current.y + (newBox.y - lastBoundingBoxRef.current.y) * lerpRate,
-            w: lastBoundingBoxRef.current.w + (newBox.w - lastBoundingBoxRef.current.w) * lerpRate,
-            h: lastBoundingBoxRef.current.h + (newBox.h - lastBoundingBoxRef.current.h) * lerpRate
-          };
-        }
-      }
-
-      // 4. Render Glowing Green Cyber Bounding Box & HUD
-      const activeBox = lastBoundingBoxRef.current;
-      if (activeBox) {
-        const { x: boxX, y: boxY, w: boxW, h: boxH } = activeBox;
+      // 3. Render Real-Time Dynamic Green Bounding Box
+      const currBox = activeBoxRef.current;
+      if (currBox) {
+        const { x: boxX, y: boxY, w: boxW, h: boxH } = currBox;
 
         ctx.save();
         // Green Bounding Rectangle
@@ -272,7 +187,7 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.lineWidth = 3;
         ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-        // Cyber Glowing Corner Brackets
+        // Cyber Corner Brackets
         const bracketLength = 25;
         ctx.lineWidth = 5;
         ctx.strokeStyle = "#00ff22";
@@ -346,7 +261,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillStyle = "#00ff22";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM FOR STEP 1: AI FACE DETECTION & FRAMING", w / 2, h / 2);
+      ctx.fillText("START WEBCAM FOR STEP 1: DYNAMIC FACE TRACKING BOUNDING BOX", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -369,7 +284,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Step 1: AI Face Bounding Box</div>
+        <div className={styles.brandSubtitle}>Step 1: AI Dynamic Face Tracking</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -462,7 +377,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          Step 1: AI Real-Time Face Detection & Bounding Box HUD Framing
+          Step 1: Real-Time Dynamic Face Motion Tracking Bounding Box HUD
         </div>
       </div>
     </div>
