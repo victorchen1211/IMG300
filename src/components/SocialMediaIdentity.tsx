@@ -15,9 +15,10 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // Face Region Display Controls
-  const [centerDisplaySize, setCenterDisplaySize] = useState<number>(320);
+  // 3x3 Face Region Grid Controls
+  const [tileSize, setTileSize] = useState<number>(160); // Square Tile Size (50px ~ 220px)
   const [cropPadding, setCropPadding] = useState<number>(30);
+  const [gridOffset, setGridOffset] = useState<number>(15); // Percentage crop offset for outer tiles
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -107,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop
+  // Main Render Loop - 3x3 Square Face Region Grid Matrix
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -127,7 +128,7 @@ export const SocialMediaIdentity: React.FC = () => {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle background grid accent
+    // Background grid accent
     ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
     ctx.lineWidth = 1;
     const bgStep = 40;
@@ -183,55 +184,94 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render CENTER CANVAS ONLY: PURE CLEAN CROPPED FACE REGION
+      // 2. Render 3x3 SQUARE FACE REGION GRID MATRIX
       const normCrop = rawFaceCropRef.current;
-      const centerW = centerDisplaySize;
-      const centerH = centerDisplaySize * 1.15;
-      const centerX = (w - centerW) / 2;
-      const centerY = (h - centerH) / 2;
+      const gridCols = 3;
+      const gridRows = 3;
+      const totalGridW = gridCols * tileSize;
+      const totalGridH = gridRows * tileSize;
+
+      const gridStartX = (w - totalGridW) / 2;
+      const gridStartY = (h - totalGridH) / 2;
 
       if (normCrop) {
-        // Calculate Source Video Crop Coordinates with Padding
-        const padX = (cropPadding / w) * (normCrop.normMaxX - normCrop.normMinX);
-        const padY = (cropPadding / h) * (normCrop.normMaxY - normCrop.normMinY);
+        // Base Source Video Crop Coordinates with Padding
+        const faceW = normCrop.normMaxX - normCrop.normMinX;
+        const faceH = normCrop.normMaxY - normCrop.normMinY;
 
-        const cropMinX = Math.max(0, normCrop.normMinX - padX);
-        const cropMinY = Math.max(0, normCrop.normMinY - padY);
-        const cropMaxX = Math.min(1, normCrop.normMaxX + padX);
-        const cropMaxY = Math.min(1, normCrop.normMaxY + padY);
+        const padX = (cropPadding / w) * faceW;
+        const padY = (cropPadding / h) * faceH;
 
-        const srcX = cropMinX * vW;
-        const srcY = cropMinY * vH;
-        const srcW = (cropMaxX - cropMinX) * vW;
-        const srcH = (cropMaxY - cropMinY) * vH;
+        const baseMinX = Math.max(0, normCrop.normMinX - padX);
+        const baseMinY = Math.max(0, normCrop.normMinY - padY);
+        const baseMaxX = Math.min(1, normCrop.normMaxX + padX);
+        const baseMaxY = Math.min(1, normCrop.normMaxY + padY);
 
-        // Draw Pure Mirrored Face Region Crop in Center Canvas
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(centerX, centerY, centerW, centerH);
-        ctx.clip();
+        const cropWNorm = baseMaxX - baseMinX;
+        const cropHNorm = baseMaxY - baseMinY;
 
-        ctx.translate(centerX + centerW, centerY);
-        ctx.scale(-1, 1);
-        ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, centerW, centerH);
-        ctx.restore();
+        // Render each of the 9 square tiles in the 3x3 matrix
+        for (let r = 0; r < gridRows; r++) {
+          for (let c = 0; c < gridCols; c++) {
+            const tileX = gridStartX + c * tileSize;
+            const tileY = gridStartY + r * tileSize;
+
+            // Offset crop calculation for outer 8 tiles relative to center (1,1)
+            const offCol = c - 1; // -1, 0, 1
+            const offRow = r - 1; // -1, 0, 1
+
+            const shiftFraction = (gridOffset / 100);
+
+            let tileMinX = baseMinX + offCol * (cropWNorm * shiftFraction);
+            let tileMinY = baseMinY + offRow * (cropHNorm * shiftFraction);
+            let tileMaxX = tileMinX + cropWNorm;
+            let tileMaxY = tileMinY + cropHNorm;
+
+            // Clamp source video crop bounds
+            if (tileMinX < 0) { tileMinX = 0; tileMaxX = cropWNorm; }
+            if (tileMaxX > 1) { tileMaxX = 1; tileMinX = 1 - cropWNorm; }
+            if (tileMinY < 0) { tileMinY = 0; tileMaxY = cropHNorm; }
+            if (tileMaxY > 1) { tileMaxY = 1; tileMinY = 1 - cropHNorm; }
+
+            const srcX = tileMinX * vW;
+            const srcY = tileMinY * vH;
+            const srcW = (tileMaxX - tileMinX) * vW;
+            const srcH = (tileMaxY - tileMinY) * vH;
+
+            // Draw Square Face Region Crop Tile
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(tileX, tileY, tileSize, tileSize);
+            ctx.clip();
+
+            ctx.translate(tileX + tileSize, tileY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, tileSize, tileSize);
+            ctx.restore();
+
+            // Seamless subtle grid border between adjacent 3x3 tiles
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(tileX, tileY, tileSize, tileSize);
+          }
+        }
       } else {
         // Simple prompt when face region is searching
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("SEARCHING FACE REGION...", centerX + centerW / 2, centerY + centerH / 2);
+        ctx.fillText("SEARCHING FACE REGION FOR 3x3 GRID...", w / 2, h / 2);
       }
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW FACE REGION", w / 2, h / 2);
+      ctx.fillText("START WEBCAM TO VIEW 3x3 FACE REGION GRID", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, centerDisplaySize, cropPadding]);
+  }, [isCameraActive, tileSize, cropPadding, gridOffset]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -250,7 +290,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Face Region Viewport</div>
+        <div className={styles.brandSubtitle}>3x3 Face Region Grid Matrix</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -290,23 +330,38 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* Face Region Display Controls */}
+        {/* 3x3 Face Region Controls */}
         <div className={styles.sectionHeader}>
-          <span>Face Region Settings</span>
+          <span>3x3 Grid Settings</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Face Region Display Size</span>
-            <span className={styles.controlValue}>{centerDisplaySize}px</span>
+            <span className={styles.controlLabel}>Square Tile Size</span>
+            <span className={styles.controlValue}>{tileSize}px</span>
           </div>
           <input
             type="range"
             min={50}
-            max={560}
+            max={220}
             step={10}
-            value={centerDisplaySize}
-            onChange={(e) => setCenterDisplaySize(parseInt(e.target.value))}
+            value={tileSize}
+            onChange={(e) => setTileSize(parseInt(e.target.value))}
+          />
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Outer Tiles Shift</span>
+            <span className={styles.controlValue}>{gridOffset}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={40}
+            step={5}
+            value={gridOffset}
+            onChange={(e) => setGridOffset(parseInt(e.target.value))}
           />
         </div>
 
@@ -347,7 +402,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
             <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED" : "SEARCHING..."}
+              {faceDetected ? "TRACKED (3x3)" : "SEARCHING..."}
             </span>
           </div>
         </div>
@@ -378,7 +433,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Pure Face Region Viewport
+          IMG300 Studio • 3x3 Square Face Region Grid Matrix (9 Tiles)
         </div>
       </div>
     </div>
