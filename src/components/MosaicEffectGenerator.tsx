@@ -4,17 +4,6 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
 import { ImageUploader } from "./common";
 
-// Preset Color Swatches for Border Color (Including White Default & Transparent)
-const BORDER_PRESET_COLORS = [
-  { name: "White", value: "#ffffff" },
-  { name: "Transparent", value: "transparent" },
-  { name: "Cyan", value: "#00e5ff" },
-  { name: "Green", value: "#00ff22" },
-  { name: "Pink", value: "#ff007f" },
-  { name: "Yellow", value: "#ffea00" },
-  { name: "Black", value: "#000000" }
-];
-
 // Preset Color Swatches for Cutout Background
 const CUTOUT_BG_COLORS = [
   { name: "Dark Studio", value: "#0a0a0f" },
@@ -34,12 +23,11 @@ export const MosaicEffectGenerator: React.FC = () => {
   // 1. Square Grid Dimension (Strictly Square Tiles Only)
   const [gridCount, setGridCount] = useState<number>(8); // Square Grid Division Count (1 to 30)
 
-  // 2. Reference Base Grid Toggle (Pure Reference Overlay, No Custom Color)
+  // 2. Reference Base Grid Toggle (Pure Reference Overlay)
   const [showReferenceGrid, setShowReferenceGrid] = useState<boolean>(true);
 
-  // 3. Selected Tile Border Controls (Default White, Includes Transparent)
+  // 3. Grid Border Thickness Control
   const [borderWidth, setBorderWidth] = useState<number>(2); // 0px to 20px (0 = No Border)
-  const [borderColor, setBorderColor] = useState<string>("#ffffff"); // Default Pure White
 
   // 4. Interactive Tile Selection (Set of "row,col" strings)
   const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set());
@@ -154,7 +142,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       // Render Selected Tile Style Effects (Cutout, Mosaic, Blur, Invert)
       if (isEffectEnabled && selectedTiles.size > 0) {
         // Calculate border offset to subtract border area from tile effects
-        const borderInset = (showReferenceGrid && borderWidth > 0 && borderColor !== "transparent") ? borderWidth / 2 : 0;
+        const borderInset = (showReferenceGrid && borderWidth > 0) ? borderWidth / 2 : 0;
 
         selectedTiles.forEach((tileId) => {
           const [r, c] = tileId.split(",").map(Number);
@@ -237,7 +225,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           const tileX = drawX + c * tileW;
           const tileY = drawY + r * tileH;
 
-          const borderInset = (showReferenceGrid && borderWidth > 0 && borderColor !== "transparent") ? borderWidth / 2 : 0;
+          const borderInset = (showReferenceGrid && borderWidth > 0) ? borderWidth / 2 : 0;
           const effX = tileX + borderInset;
           const effY = tileY + borderInset;
           const effW = Math.max(1, tileW - 2 * borderInset);
@@ -251,9 +239,9 @@ export const MosaicEffectGenerator: React.FC = () => {
       });
 
       // Render Entire Grid Borders / Reference Grid (Only when showReferenceGrid is ON)
-      if (showReferenceGrid && borderWidth > 0 && borderColor !== "transparent") {
+      if (showReferenceGrid && borderWidth > 0) {
         ctx.save();
-        ctx.strokeStyle = borderColor;
+        ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = borderWidth;
 
         const tileW = drawW / numCols;
@@ -275,7 +263,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN MOSAIC GRID SELECTION", w / 2, h / 2);
     }
-  }, [sourceImage, gridCount, showReferenceGrid, borderWidth, borderColor, selectedTiles, isEffectEnabled, selectedEffectMode, cutoutBgColor, mosaicBlockSize, blurRadius, getSquareGridCounts]);
+  }, [sourceImage, gridCount, showReferenceGrid, borderWidth, selectedTiles, isEffectEnabled, selectedEffectMode, cutoutBgColor, mosaicBlockSize, blurRadius, getSquareGridCounts]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -373,60 +361,6 @@ export const MosaicEffectGenerator: React.FC = () => {
             onChange={(e) => setBorderWidth(parseInt(e.target.value))}
           />
         </div>
-
-        {/* Border Color Picker & Swatches */}
-        {borderWidth > 0 && (
-          <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-            <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-              <span className={styles.controlLabel}>Border Color</span>
-              <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
-                {borderColor === "transparent" ? "TRANSPARENT" : borderColor}
-              </span>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <input
-                type="color"
-                value={borderColor === "transparent" ? "#ffffff" : borderColor}
-                onChange={(e) => setBorderColor(e.target.value)}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  padding: "0",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  background: "transparent"
-                }}
-              />
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
-                {BORDER_PRESET_COLORS.map((color) => (
-                  <button
-                    key={color.name}
-                    onClick={() => setBorderColor(color.value)}
-                    style={{
-                      width: "22px",
-                      height: "22px",
-                      borderRadius: "50%",
-                      backgroundColor: color.value === "transparent" ? "rgba(255,255,255,0.1)" : color.value,
-                      border: borderColor === color.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
-                      cursor: "pointer",
-                      boxShadow: borderColor === color.value ? "0 0 8px rgba(255,255,255,0.8)" : "none",
-                      padding: 0,
-                      position: "relative",
-                      overflow: "hidden"
-                    }}
-                    title={color.name}
-                  >
-                    {color.value === "transparent" && (
-                      <span style={{ fontSize: "10px", color: "#ff3b30", fontWeight: 900, display: "block" }}>✕</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* 2. Reference Base Grid Overlay Toggle */}
         <div className={styles.sectionHeader}>
