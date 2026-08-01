@@ -18,7 +18,7 @@ export const SocialMediaIdentity: React.FC = () => {
   // 1x3 (3 Tiles: 1, 2, 3) Controls
   const [tileSize, setTileSize] = useState<number>(220); // Square Tile Size (50px ~ 320px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(50); // Default 50% = Normal Fit (0% = Farther Out, 100% = Closer In)
+  const [gridOffset, setGridOffset] = useState<number>(50); // Default 50% = Pre-offset Initial State
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 3 Horizontally Adjacent Tiles with 50% Neutral Slider
+  // Main Render Loop - 3 Horizontally Adjacent Tiles with Pre-Shifted Initial Step Offset
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -209,21 +209,24 @@ export const SocialMediaIdentity: React.FC = () => {
         const cropWNorm = baseMaxX - baseMinX;
         const cropHNorm = baseMaxY - baseMinY;
 
+        // Base Initial Step Shift: Tile 1 pre-shifts Left, Tile 3 pre-shifts Right (showing partial face)
+        const baseOutwardStep = 0.20; // 20% initial offset at 50% neutral slider
+
+        // Signed Slider Factor: 50% = 0.0, >50% = Inward Closer, <50% = Outward Farther
+        const signedFactor = (gridOffset - 50) / 50; // -1.0 to +1.0
+
         // Render 3 Square Tiles: Tile 1 (Left), Tile 2 (Center), Tile 3 (Right)
         for (let c = 0; c < gridCols; c++) {
           const tileX = gridStartX + c * tileSize;
           const tileY = gridStartY;
 
-          // Signed Shift Factor: 50% = 0.0 (Normal), >50% = Closer In, <50% = Farther Out
-          const signedFactor = (gridOffset - 50) / 50; // -1.0 to +1.0
-
-          // Vector toward center tile 2 (c=1):
-          // Tile 1 (c=0, Left): inwardCol = +1 -> >50% shifts RIGHT (→), <50% shifts LEFT (←)
-          // Tile 2 (c=1, Center): inwardCol = 0 -> fixed center
-          // Tile 3 (c=2, Right): inwardCol = -1 -> >50% shifts LEFT (←), <50% shifts RIGHT (→)
+          // inwardCol: c=0 (Left) -> +1; c=1 (Center) -> 0; c=2 (Right) -> -1
           const inwardCol = 1 - c;
 
-          let tileMinX = baseMinX - inwardCol * (cropWNorm * signedFactor * 0.45);
+          // Initial pre-offset (-inwardCol * baseOutwardStep) plus interactive slider shift:
+          const netOffsetFraction = -inwardCol * (baseOutwardStep - signedFactor * 0.35);
+
+          let tileMinX = baseMinX + netOffsetFraction * cropWNorm;
           let tileMinY = baseMinY;
           let tileMaxX = tileMinX + cropWNorm;
           let tileMaxY = tileMinY + cropHNorm;
@@ -358,10 +361,10 @@ export const SocialMediaIdentity: React.FC = () => {
           />
         </div>
 
-        {/* Horizontal Shift Offset (50% = Normal, >50% = Closer, <50% = Farther) */}
+        {/* Horizontal Shift Offset (50% = Pre-shifted Initial State) */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Shift (50% Normal / &gt;50% Inward)</span>
+            <span className={styles.controlLabel}>Shift (50% Initial / &gt;50% Inward)</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
@@ -442,7 +445,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 3 Horizontally Adjacent Face Region Tiles (50% = Normal Fit)
+          IMG300 Studio • 3 Horizontally Adjacent Face Region Tiles (1 & 3 Pre-offset Partial Face)
         </div>
       </div>
     </div>
