@@ -18,7 +18,7 @@ export const SocialMediaIdentity: React.FC = () => {
   // 1x3 (3 Tiles: 1, 2, 3) Controls
   const [tileSize, setTileSize] = useState<number>(220); // Square Tile Size (50px ~ 320px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(50); // Default 50% = Pre-offset Initial State
+  const [gridOffset, setGridOffset] = useState<number>(100); // Default 100% initial state
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -364,7 +364,7 @@ export const SocialMediaIdentity: React.FC = () => {
         {/* Horizontal Shift Offset (50% = Pre-shifted Initial State) */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Shift (50% Initial / &gt;50% Inward)</span>
+            <span className={styles.controlLabel}>Horizontal Shift Offset</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
