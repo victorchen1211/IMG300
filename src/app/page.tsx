@@ -10,12 +10,7 @@ const CARDS: CardData[] = [
     title: "Blur & Reveal",
     author: "Created By Victor Chen",
     href: "/blur-and-reveal",
-    image: "/images/carousel/blur-and-reveal/image1.png",
-    images: [
-      "/images/carousel/blur-and-reveal/image1.png",
-      "/images/carousel/blur-and-reveal/image2.jpg",
-      "/images/carousel/blur-and-reveal/image3.jpg"
-    ],
+    image: "/thumbnails/blur-and-reveal.png",
     likes: 12,
     remixes: 480,
     shares: 18
@@ -25,12 +20,7 @@ const CARDS: CardData[] = [
     title: "Glass Effect",
     author: "Created By Victor Chen",
     href: "/glass-effect",
-    image: "/images/carousel/glass-effect/image1.png",
-    images: [
-      "/images/carousel/glass-effect/image1.png",
-      "/images/carousel/glass-effect/image2.jpg",
-      "/images/carousel/glass-effect/image3.jpg"
-    ],
+    image: "/thumbnails/glass-effect.png",
     likes: 8,
     remixes: 230,
     shares: 6
@@ -40,12 +30,7 @@ const CARDS: CardData[] = [
     title: "Social Media Identity",
     author: "Created By Victor Chen",
     href: "/social-media-identity",
-    image: "/images/carousel/social-media-identity/image1.jpg",
-    images: [
-      "/images/carousel/social-media-identity/image1.jpg",
-      "/images/carousel/social-media-identity/image2.jpg",
-      "/images/carousel/social-media-identity/image3.jpg"
-    ],
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80",
     likes: 18,
     remixes: 410,
     shares: 25
@@ -55,12 +40,7 @@ const CARDS: CardData[] = [
     title: "Halftone Matrix",
     author: "Created By Victor Chen",
     href: "#",
-    image: "/images/carousel/halftone-matrix/image1.jpg",
-    images: [
-      "/images/carousel/halftone-matrix/image1.jpg",
-      "/images/carousel/halftone-matrix/image2.jpg",
-      "/images/carousel/halftone-matrix/image3.jpg"
-    ],
+    image: "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=600&q=80",
     likes: 9,
     remixes: 992,
     shares: 29,
@@ -71,12 +51,7 @@ const CARDS: CardData[] = [
     title: "3D Prism Filter",
     author: "Created By Victor Chen",
     href: "#",
-    image: "/images/carousel/3d-prism-filter/image1.jpg",
-    images: [
-      "/images/carousel/3d-prism-filter/image1.jpg",
-      "/images/carousel/3d-prism-filter/image2.jpg",
-      "/images/carousel/3d-prism-filter/image3.jpg"
-    ],
+    image: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=600&q=80",
     likes: 5,
     remixes: 368,
     shares: 12,
@@ -87,12 +62,7 @@ const CARDS: CardData[] = [
     title: "ASCII Swarm",
     author: "Created By Victor Chen",
     href: "#",
-    image: "/images/carousel/ascii-swarm/image1.jpg",
-    images: [
-      "/images/carousel/ascii-swarm/image1.jpg",
-      "/images/carousel/ascii-swarm/image2.jpg",
-      "/images/carousel/ascii-swarm/image3.jpg"
-    ],
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80",
     likes: 14,
     remixes: 516,
     shares: 3,
@@ -103,12 +73,7 @@ const CARDS: CardData[] = [
     title: "Voronoi Generator",
     author: "Created By Victor Chen",
     href: "#",
-    image: "/images/carousel/voronoi-generator/image1.jpg",
-    images: [
-      "/images/carousel/voronoi-generator/image1.jpg",
-      "/images/carousel/voronoi-generator/image2.jpg",
-      "/images/carousel/voronoi-generator/image3.jpg"
-    ],
+    image: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&w=600&q=80",
     likes: 5,
     remixes: 580,
     shares: 12,
@@ -119,12 +84,7 @@ const CARDS: CardData[] = [
     title: "Subdivision Type",
     author: "Created By Victor Chen",
     href: "#",
-    image: "/images/carousel/subdivision-type/image1.jpg",
-    images: [
-      "/images/carousel/subdivision-type/image1.jpg",
-      "/images/carousel/subdivision-type/image2.jpg",
-      "/images/carousel/subdivision-type/image3.jpg"
-    ],
+    image: "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=600&q=80",
     likes: 2,
     remixes: 597,
     shares: 19,
