@@ -224,7 +224,7 @@ export const SocialMediaIdentity: React.FC = () => {
           const inwardCol = 1 - c;
 
           // Initial pre-offset (-inwardCol * baseOutwardStep) plus interactive slider shift:
-          const netOffsetFraction = -inwardCol * (baseOutwardStep - signedFactor * 0.35);
+          const netOffsetFraction = -inwardCol * (baseOutwardStep - signedFactor * 0.48);
 
           let tileMinX = baseMinX + netOffsetFraction * cropWNorm;
           let tileMinY = baseMinY;
