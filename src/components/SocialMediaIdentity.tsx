@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 3x3 Inward Convergence Face Region Grid Matrix
+  // Main Render Loop - 3x3 Inward Convergence Face Region Grid Matrix (Exact User Trajectory)
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -184,7 +184,7 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render 3x3 SQUARE FACE REGION GRID MATRIX (INWARD CONVERGENCE)
+      // 2. Render 3x3 SQUARE FACE REGION GRID MATRIX (CONVERGES TOWARDS CENTER STAR ★)
       const normCrop = rawFaceCropRef.current;
       const gridCols = 3;
       const gridRows = 3;
@@ -216,16 +216,19 @@ export const SocialMediaIdentity: React.FC = () => {
             const tileX = gridStartX + c * tileSize;
             const tileY = gridStartY + r * tileSize;
 
-            // Inward Convergence Shift Vector: Outer tiles shift INWARD towards center (1,1)
-            // c=0 (left) -> +1 (shift right); c=2 (right) -> -1 (shift left)
-            // r=0 (top)  -> +1 (shift down);  r=2 (bottom)-> -1 (shift up)
+            // Direction toward center star ★ (1,1):
+            // Top-Left (0,0) -> ↘ (Down-Right)
+            // Top-Right (2,0) -> ↙ (Down-Left)
+            // Bottom-Left (0,2) -> ↗ (Up-Right)
+            // Bottom-Right (2,2) -> ↖ (Up-Left)
             const inwardCol = 1 - c;
             const inwardRow = 1 - r;
 
             const shiftFraction = (gridOffset / 100);
 
-            let tileMinX = baseMinX + inwardCol * (cropWNorm * shiftFraction);
-            let tileMinY = baseMinY + inwardRow * (cropHNorm * shiftFraction);
+            // Subtracting inwardCol / inwardRow produces exact visual trajectory towards center star ★
+            let tileMinX = baseMinX - inwardCol * (cropWNorm * shiftFraction);
+            let tileMinY = baseMinY - inwardRow * (cropHNorm * shiftFraction);
             let tileMaxX = tileMinX + cropWNorm;
             let tileMaxY = tileMinY + cropHNorm;
 
@@ -354,7 +357,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Inward Convergence Shift</span>
+            <span className={styles.controlLabel}>Inward Shift (Towards ★)</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
@@ -435,7 +438,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 3x3 Square Face Region Inward Convergence Grid Matrix
+          IMG300 Studio • 3x3 Square Face Region Convergence Matrix (Towards Center Star ★)
         </div>
       </div>
     </div>
