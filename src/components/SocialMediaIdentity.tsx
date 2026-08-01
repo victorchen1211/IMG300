@@ -22,6 +22,7 @@ export const SocialMediaIdentity: React.FC = () => {
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
   const [isPinchActive, setIsPinchActive] = useState<boolean>(false);
   const [manualSketchMode, setManualSketchMode] = useState<boolean>(false);
+  const [gridSize, setGridSize] = useState<number>(20); // Default 20x20 Grid
   const [sketchContrast, setSketchContrast] = useState<number>(1.8);
 
   // Refs for MediaPipe Models & Animation
@@ -104,140 +105,6 @@ export const SocialMediaIdentity: React.FC = () => {
     setIsPinchActive(false);
   };
 
-  // Real-time Pencil Sketch Shader & Cross-Hatch Rendering Engine
-  const renderPencilSketch = (
-    ctx: CanvasRenderingContext2D,
-    video: HTMLVideoElement,
-    landmarks: any[],
-    canvasW: number,
-    canvasH: number
-  ) => {
-    // 1. Compute Face Bounding Box
-    let minX = 1, maxX = 0, minY = 1, maxY = 0;
-    FACE_OVAL_LANDMARKS.forEach((idx) => {
-      const pt = landmarks[idx];
-      if (pt) {
-        if (pt.x < minX) minX = pt.x;
-        if (pt.x > maxX) maxX = pt.x;
-        if (pt.y < minY) minY = pt.y;
-        if (pt.y > maxY) maxY = pt.y;
-      }
-    });
-
-    const boxX = (1 - maxX) * canvasW;
-    const boxY = minY * canvasH;
-    const boxW = (maxX - minX) * canvasW;
-    const boxH = (maxY - minY) * canvasH;
-
-    if (boxW <= 0 || boxH <= 0) return;
-
-    // 2. Offscreen canvas for Sobel Pencil Edge Extraction
-    const sampleW = Math.max(120, Math.floor(boxW / 2));
-    const sampleH = Math.max(120, Math.floor(boxH / 2));
-
-    if (!sketchOffscreenCanvasRef.current) {
-      sketchOffscreenCanvasRef.current = document.createElement("canvas");
-    }
-    const oCanvas = sketchOffscreenCanvasRef.current;
-    if (oCanvas.width !== sampleW || oCanvas.height !== sampleH) {
-      oCanvas.width = sampleW;
-      oCanvas.height = sampleH;
-    }
-    const oCtx = oCanvas.getContext("2d");
-    if (!oCtx) return;
-
-    // Video crop coordinates
-    const vW = video.videoWidth;
-    const vH = video.videoHeight;
-    const cropX = Math.max(0, (1 - (boxX + boxW) / canvasW) * vW);
-    const cropY = Math.max(0, (boxY / canvasH) * vH);
-    const cropW = Math.min(vW - cropX, (boxW / canvasW) * vW);
-    const cropH = Math.min(vH - cropY, (boxH / canvasH) * vH);
-
-    oCtx.save();
-    oCtx.translate(sampleW, 0);
-    oCtx.scale(-1, 1);
-    oCtx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, sampleW, sampleH);
-    oCtx.restore();
-
-    const srcImgData = oCtx.getImageData(0, 0, sampleW, sampleH);
-    const srcData = srcImgData.data;
-
-    // Grayscale Luminance Map
-    const gray = new Float32Array(sampleW * sampleH);
-    for (let i = 0; i < sampleW * sampleH; i++) {
-      const r = srcData[i * 4];
-      const g = srcData[i * 4 + 1];
-      const b = srcData[i * 4 + 2];
-      gray[i] = 0.299 * r + 0.587 * g + 0.114 * b;
-    }
-
-    const outImgData = oCtx.createImageData(sampleW, sampleH);
-    const outData = outImgData.data;
-
-    // Sobel Edge Detection + Cross-Hatching Pencil Shader
-    for (let y = 1; y < sampleH - 1; y++) {
-      for (let x = 1; x < sampleW - 1; x++) {
-        const idx = y * sampleW + x;
-
-        // Sobel Gradient Kernels
-        const gx =
-          -gray[idx - sampleW - 1] + gray[idx - sampleW + 1] +
-          -2 * gray[idx - 1] + 2 * gray[idx + 1] +
-          -gray[idx + sampleW - 1] + gray[idx + sampleW + 1];
-
-        const gy =
-          -gray[idx - sampleW - 1] - 2 * gray[idx - sampleW] - gray[idx - sampleW + 1] +
-          gray[idx + sampleW - 1] + 2 * gray[idx + sampleW] + gray[idx + sampleW + 1];
-
-        const edge = Math.sqrt(gx * gx + gy * gy) * sketchContrast;
-        const lum = gray[idx];
-
-        // Charcoal Graphite Intensity (0 = Paper White, 255 = Charcoal Dark)
-        let charcoal = edge;
-
-        // Add Cross-Hatch Pencil Shading in dark areas
-        if (lum < 110) {
-          if ((x + y) % 4 === 0) charcoal += (110 - lum) * 0.9;
-        }
-        if (lum < 60) {
-          if ((x - y) % 4 === 0) charcoal += (60 - lum) * 1.1;
-        }
-
-        const pencilVal = Math.max(0, Math.min(255, 255 - charcoal));
-
-        const outIdx = idx * 4;
-        outData[outIdx] = pencilVal;     // R
-        outData[outIdx + 1] = pencilVal; // G
-        outData[outIdx + 2] = pencilVal; // B
-        outData[outIdx + 3] = 245;       // Alpha
-      }
-    }
-
-    oCtx.putImageData(outImgData, 0, 0);
-
-    // 3. Render Pencil Sketch clipped strictly to Face Oval Contour
-    ctx.save();
-    ctx.beginPath();
-    FACE_OVAL_LANDMARKS.forEach((idx, i) => {
-      const pt = landmarks[idx];
-      if (pt) {
-        const px = (1 - pt.x) * canvasW;
-        const py = pt.y * canvasH;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-    });
-    ctx.closePath();
-    ctx.clip();
-
-    // Draw processed Pencil Sketch Canvas over Face
-    ctx.drawImage(oCanvas, boxX, boxY, boxW, boxH);
-
-    // Subtle Graphite Pencil Outline Badge
-    ctx.restore();
-  };
-
   // Main Render Loop
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
@@ -252,15 +119,32 @@ export const SocialMediaIdentity: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    if (isCameraActive && video && video.readyState >= 2) {
-      // 1. Draw Mirrored Live Webcam Feed
-      ctx.save();
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, w, h);
-      ctx.restore();
+    // Dark Cyber Studio Background
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, "#08080e");
+    bgGrad.addColorStop(1, "#12121c");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
 
-      // 2. MediaPipe HandLandmarker Pinch Gesture Detection (Index Tip 8 <-> Thumb Tip 4)
+    // Subtle background grid pattern
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+    ctx.lineWidth = 1;
+    const bgStep = 40;
+    for (let x = 0; x < w; x += bgStep) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += bgStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    if (isCameraActive && video && video.readyState >= 2) {
+      // 1. Hand Detection & Pinch Gesture Recognition (Index Tip 8 <-> Thumb Tip 4)
       let detectedPinch = false;
       const detectedHandLandmarks: any[] = [];
 
@@ -270,8 +154,8 @@ export const SocialMediaIdentity: React.FC = () => {
           if (handResults.landmarks && handResults.landmarks.length > 0) {
             handResults.landmarks.forEach((handPoints) => {
               detectedHandLandmarks.push(handPoints);
-              const thumbTip = handPoints[4]; // Thumb tip
-              const indexTip = handPoints[8]; // Index finger tip
+              const thumbTip = handPoints[4];
+              const indexTip = handPoints[8];
 
               if (thumbTip && indexTip) {
                 const pinchDist = Math.hypot(
@@ -280,7 +164,6 @@ export const SocialMediaIdentity: React.FC = () => {
                   (thumbTip.z || 0) - (indexTip.z || 0)
                 );
 
-                // Pinch threshold: distance < 0.048
                 if (pinchDist < 0.048) {
                   detectedPinch = true;
                 }
@@ -293,21 +176,16 @@ export const SocialMediaIdentity: React.FC = () => {
       }
 
       setIsPinchActive(detectedPinch);
-
       const isSketchActive = detectedPinch || manualSketchMode;
 
-      // 3. MediaPipe AI Real-time Face Detection
+      // 2. MediaPipe AI Real-time Face Detection
+      let landmarks: any = null;
       if (faceLandmarkerRef.current) {
         try {
           const results = faceLandmarkerRef.current.detectForVideo(video, now);
           if (results.faceLandmarks && results.faceLandmarks.length > 0) {
             setFaceDetected(true);
-            const landmarks = results.faceLandmarks[0];
-
-            // Render Pencil Sketch Art Effect over Face Contour when Pinching
-            if (isSketchActive) {
-              renderPencilSketch(ctx, video, landmarks, w, h);
-            }
+            landmarks = results.faceLandmarks[0];
           } else {
             setFaceDetected(false);
           }
@@ -316,19 +194,146 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 4. Render Hand Pinch Indicator Target Lines over Hands
+      // 3. Render CENTER 20x20 PIXEL MATRIX CANVAS
+      const matrixSize = 560; // 560px x 560px
+      const matrixX = (w - matrixSize) / 2; // Centered X (360)
+      const matrixY = (h - matrixSize) / 2; // Centered Y (80)
+
+      // Offscreen sampling canvas for 20x20 pixel grid
+      const cols = gridSize;
+      const rows = gridSize;
+
+      if (!sketchOffscreenCanvasRef.current) {
+        sketchOffscreenCanvasRef.current = document.createElement("canvas");
+      }
+      const oCanvas = sketchOffscreenCanvasRef.current;
+      if (oCanvas.width !== cols || oCanvas.height !== rows) {
+        oCanvas.width = cols;
+        oCanvas.height = rows;
+      }
+      const oCtx = oCanvas.getContext("2d");
+
+      if (oCtx) {
+        // Draw video frame to 20x20 sample canvas (mirrored)
+        oCtx.save();
+        oCtx.translate(cols, 0);
+        oCtx.scale(-1, 1);
+        oCtx.drawImage(video, 0, 0, cols, rows);
+        oCtx.restore();
+
+        const sampleImgData = oCtx.getImageData(0, 0, cols, rows).data;
+
+        // Render 20x20 Center Pixel Grid Container Backdrop
+        ctx.save();
+        ctx.fillStyle = "rgba(10, 10, 16, 0.9)";
+        ctx.fillRect(matrixX - 10, matrixY - 10, matrixSize + 20, matrixSize + 20);
+        ctx.strokeStyle = isSketchActive ? "#00ff22" : "rgba(255, 255, 255, 0.2)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(matrixX - 10, matrixY - 10, matrixSize + 20, matrixSize + 20);
+
+        const cellW = matrixSize / cols;
+        const cellH = matrixSize / rows;
+
+        // Draw 20x20 Pixel Matrix Grid Cells
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const idx = (r * cols + c) * 4;
+            const red = sampleImgData[idx];
+            const green = sampleImgData[idx + 1];
+            const blue = sampleImgData[idx + 2];
+
+            const px = matrixX + c * cellW;
+            const py = matrixY + r * cellH;
+
+            if (isSketchActive) {
+              // --- 20x20 PENCIL SKETCH ART MODE ---
+              const gray = 0.299 * red + 0.587 * green + 0.114 * blue;
+              let sketchVal = Math.max(0, Math.min(255, (255 - gray) * sketchContrast));
+
+              if (sketchVal > 40) {
+                ctx.fillStyle = "#000000";
+                ctx.fillRect(px, py, cellW - 1, cellH - 1);
+                ctx.strokeStyle = "#00ff22";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(px + 0.5, py + 0.5, cellW - 1, cellH - 1);
+              } else {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(px, py, cellW - 1, cellH - 1);
+              }
+            } else {
+              // --- 20x20 REAL-TIME COLOR PIXEL MATRIX MODE ---
+              ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+              ctx.fillRect(px, py, cellW - 1, cellH - 1);
+
+              // Grid cell subtle border
+              ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+              ctx.lineWidth = 1;
+              ctx.strokeRect(px, py, cellW, cellH);
+            }
+          }
+        }
+
+        // Center 20x20 Matrix Title Badge
+        ctx.fillStyle = isSketchActive ? "#00ff22" : "#ffffff";
+        ctx.font = '800 12px "Space Mono", monospace';
+        ctx.textAlign = "center";
+        ctx.fillText(
+          isSketchActive
+            ? `CENTER 20x20 PIXEL CANVAS [👌 SKETCH ACTIVE]`
+            : `CENTER 20x20 PIXEL CANVAS [REAL-TIME MATRIX]`,
+          matrixX + matrixSize / 2,
+          matrixY - 20
+        );
+
+        ctx.restore();
+      }
+
+      // 4. Render LIVE WEBCAM PIP WINDOW IN BOTTOM RIGHT CORNER
+      const pipW = 280;
+      const pipH = 175;
+      const pipX = w - pipW - 30; // 970
+      const pipY = h - pipH - 30; // 515
+
+      ctx.save();
+      // Outer Shadow & Cyber Frame for Bottom-Right PIP
+      ctx.fillStyle = "#0a0a12";
+      ctx.fillRect(pipX - 4, pipY - 4, pipW + 8, pipH + 8);
+
+      // Draw Mirrored Live Webcam Feed in Bottom-Right Corner Box
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pipX, pipY, pipW, pipH);
+      ctx.clip();
+
+      ctx.translate(pipX + pipW, pipY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, pipW, pipH);
+      ctx.restore();
+
+      // Border and Neon Badge for Bottom-Right PIP Window
+      ctx.strokeStyle = isSketchActive ? "#00ff22" : "#00e5ff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(pipX, pipY, pipW, pipH);
+
+      // Live PIP Header Tag
+      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
+      ctx.fillRect(pipX, pipY, 150, 22);
+      ctx.fillStyle = "#00ff22";
+      ctx.font = '800 10px "Space Mono", monospace';
+      ctx.fillText("● LIVE WEBCAM PIP", pipX + 10, pipY + 15);
+
+      // Draw Hand Pinch Lines inside PIP Window
       detectedHandLandmarks.forEach((handPoints) => {
         const thumbTip = handPoints[4];
         const indexTip = handPoints[8];
         if (thumbTip && indexTip) {
-          const tx = (1 - thumbTip.x) * w;
-          const ty = thumbTip.y * h;
-          const ix = (1 - indexTip.x) * w;
-          const iy = indexTip.y * h;
+          const tx = pipX + (1 - thumbTip.x) * pipW;
+          const ty = pipY + thumbTip.y * pipH;
+          const ix = pipX + (1 - indexTip.x) * pipW;
+          const iy = pipY + indexTip.y * pipH;
 
-          ctx.save();
-          ctx.strokeStyle = detectedPinch ? "#00ff22" : "rgba(255, 255, 255, 0.4)";
-          ctx.lineWidth = detectedPinch ? 3 : 1.5;
+          ctx.strokeStyle = detectedPinch ? "#00ff22" : "rgba(255, 255, 255, 0.6)";
+          ctx.lineWidth = detectedPinch ? 2.5 : 1.5;
 
           ctx.beginPath();
           ctx.moveTo(tx, ty);
@@ -337,51 +342,23 @@ export const SocialMediaIdentity: React.FC = () => {
 
           ctx.fillStyle = detectedPinch ? "#00ff22" : "#ffffff";
           ctx.beginPath();
-          ctx.arc(tx, ty, 4, 0, Math.PI * 2);
-          ctx.arc(ix, iy, 4, 0, Math.PI * 2);
+          ctx.arc(tx, ty, 3, 0, Math.PI * 2);
+          ctx.arc(ix, iy, 3, 0, Math.PI * 2);
           ctx.fill();
-
-          if (detectedPinch) {
-            ctx.font = '800 11px "Space Mono", monospace';
-            ctx.fillText("👌 PINCH (SKETCH)", ix + 10, iy);
-          }
-
-          ctx.restore();
         }
       });
+
+      ctx.restore();
     } else {
-      // Dark cyber background when camera is off
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, "#0a0a12");
-      grad.addColorStop(1, "#141424");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Grid lines background accent
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-      ctx.lineWidth = 1;
-      const step = 40;
-      for (let x = 0; x < w; x += step) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = 0; y < h; y += step) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
+      // Offline Camera Prompt
       ctx.fillStyle = "#00ff22";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("PINCH INDEX TO THUMB 👌 FOR FACE PENCIL SKETCH ART", w / 2, h / 2);
+      ctx.fillText("START WEBCAM FOR CENTER 20x20 CANVAS & BOTTOM-RIGHT PIP", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, manualSketchMode, sketchContrast]);
+  }, [isCameraActive, manualSketchMode, gridSize, sketchContrast]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -400,7 +377,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Pinch Gesture Face Sketch</div>
+        <div className={styles.brandSubtitle}>Center 20x20 & Bottom-Right PIP</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -440,7 +417,27 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* Pencil Sketch Controls Section */}
+        {/* 20x20 Matrix Grid Controls Section */}
+        <div className={styles.sectionHeader}>
+          <span>Center Grid Settings</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Grid Matrix Resolution</span>
+            <span className={styles.controlValue}>{gridSize}x{gridSize}</span>
+          </div>
+          <input
+            type="range"
+            min={10}
+            max={40}
+            step={2}
+            value={gridSize}
+            onChange={(e) => setGridSize(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* Pinch Sketch Controls Section */}
         <div className={styles.sectionHeader}>
           <span>Pencil Sketch Gesture</span>
         </div>
@@ -462,22 +459,6 @@ export const SocialMediaIdentity: React.FC = () => {
           </button>
         </div>
 
-        {/* Sketch Contrast Slider */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Pencil Edge Contrast</span>
-            <span className={styles.controlValue}>{sketchContrast.toFixed(1)}x</span>
-          </div>
-          <input
-            type="range"
-            min={1.0}
-            max={3.0}
-            step={0.1}
-            value={sketchContrast}
-            onChange={(e) => setSketchContrast(parseFloat(e.target.value))}
-          />
-        </div>
-
         {/* Status Indicator */}
         <div
           style={{
@@ -492,9 +473,15 @@ export const SocialMediaIdentity: React.FC = () => {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face AI Tracking</span>
-            <span style={{ color: faceDetected ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED" : "SEARCHING..."}
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Webcam Viewport</span>
+            <span style={{ color: "#00ff22", fontWeight: 700 }}>
+              BOTTOM-RIGHT PIP
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Center Matrix</span>
+            <span style={{ color: "#00ff22", fontWeight: 700 }}>
+              {gridSize}x{gridSize} GRID
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -506,7 +493,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Webcam Viewport */}
+      {/* Main Viewport */}
       <div className={styles.canvasViewport} ref={containerRef}>
         <div className={styles.canvasWrapper} style={{ position: "relative" }}>
           {/* Video Stream Element */}
@@ -517,7 +504,7 @@ export const SocialMediaIdentity: React.FC = () => {
             style={{ display: "none" }}
           />
 
-          {/* Real-time Cyber Surveillance HUD Canvas */}
+          {/* Real-time Cyber Canvas */}
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
@@ -531,7 +518,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          AI Pinch Gesture Face Sketch Art • Pinch Index & Thumb 👌 to Transform Face into Pencil Portrait
+          AI Cyber Identity • Center 20x20 Pixel Matrix Grid + Bottom-Right Live Webcam PIP Window
         </div>
       </div>
     </div>
