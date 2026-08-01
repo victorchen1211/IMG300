@@ -240,7 +240,7 @@ export const SocialMediaIdentity: React.FC = () => {
           const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.48);
 
           let tileMinX = baseMinX + netOffsetCol * cropWNorm;
-          let tileMinY = baseMinY + netOffsetRow * cropHNorm;
+          let tileMinY = baseMinY - netOffsetRow * cropHNorm;
           let tileMaxX = tileMinX + cropWNorm;
           let tileMaxY = tileMinY + cropHNorm;
 
