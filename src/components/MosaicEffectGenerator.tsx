@@ -4,13 +4,24 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
 import { ImageUploader } from "./common";
 
-const PRESET_COLORS = [
+// Preset Color Swatches for Border Color (Including White Default & Transparent)
+const BORDER_PRESET_COLORS = [
+  { name: "White", value: "#ffffff" },
+  { name: "Transparent", value: "transparent" },
   { name: "Cyan", value: "#00e5ff" },
   { name: "Green", value: "#00ff22" },
   { name: "Pink", value: "#ff007f" },
   { name: "Yellow", value: "#ffea00" },
-  { name: "White", value: "#ffffff" },
   { name: "Black", value: "#000000" }
+];
+
+// Preset Color Swatches for Cutout Background
+const CUTOUT_BG_COLORS = [
+  { name: "Dark Studio", value: "#0a0a0f" },
+  { name: "Pure White", value: "#ffffff" },
+  { name: "Transparent", value: "transparent" },
+  { name: "Neon Pink", value: "#ff007f" },
+  { name: "Cyber Cyan", value: "#00e5ff" }
 ];
 
 export const MosaicEffectGenerator: React.FC = () => {
@@ -20,27 +31,27 @@ export const MosaicEffectGenerator: React.FC = () => {
 
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
 
-  // Tile Shape Mode ("square" | "rectangle")
-  const [tileShapeMode, setTileShapeMode] = useState<"square" | "rectangle">("square");
+  // 1. Square Grid Dimension (Strictly Square Tiles Only)
+  const [gridCount, setGridCount] = useState<number>(8); // Square Grid Division Count (1 to 30)
 
-  // Grid Controls
-  const [gridCols, setGridCols] = useState<number>(8); // Columns (1 to 30)
-  const [gridRows, setGridRows] = useState<number>(8); // Rows (1 to 30)
+  // 2. Reference Base Grid Toggle (Pure Reference Overlay, No Custom Color)
+  const [showReferenceGrid, setShowReferenceGrid] = useState<boolean>(true);
 
-  // Line Style Controls
-  const [showGridLines, setShowGridLines] = useState<boolean>(true); // Show Lines ON / OFF
-  const [lineWidth, setLineWidth] = useState<number>(3); // Line Thickness (1px to 20px)
-  const [lineColor, setLineColor] = useState<string>("#00e5ff"); // Line Color (Hex)
+  // 3. Selected Tile Border Controls (Default White, Includes Transparent)
+  const [borderWidth, setBorderWidth] = useState<number>(2); // 0px to 20px (0 = No Border)
+  const [borderColor, setBorderColor] = useState<string>("#ffffff"); // Default Pure White
 
-  // Interactive Tile Selection (Set of "row,col" strings)
+  // 4. Interactive Tile Selection (Set of "row,col" strings)
   const [selectedTiles, setSelectedTiles] = useState<Set<string>>(new Set());
 
-  // Tile Effect Controls (Master Toggle + Mode Selection)
-  const [isEffectEnabled, setIsEffectEnabled] = useState<boolean>(true); // Master Effect Toggle
+  // 5. Style Controls (Clean Text Buttons: Cutout, Mosaic, Blur, Invert)
+  const [isEffectEnabled, setIsEffectEnabled] = useState<boolean>(true); // Master Effect Switch
   const [selectedEffectMode, setSelectedEffectMode] = useState<"cutout" | "mosaic" | "blur" | "invert">("cutout");
-  const [showSelectedTileBorder, setShowSelectedTileBorder] = useState<boolean>(true); // Selected Tile Border ON / OFF
-  const [mosaicBlockSize, setMosaicBlockSize] = useState<number>(12); // Mosaic pixel block size (4px ~ 32px)
-  const [blurRadius, setBlurRadius] = useState<number>(10); // Blur radius (4px ~ 24px)
+
+  // 6. Style Sub-Parameters
+  const [cutoutBgColor, setCutoutBgColor] = useState<string>("#0a0a0f"); // Cutout Background Color
+  const [mosaicBlockSize, setMosaicBlockSize] = useState<number>(14); // Mosaic Resolution (4px ~ 40px)
+  const [blurRadius, setBlurRadius] = useState<number>(10); // Blur Radius (4px ~ 24px)
 
   // Load default sample image on mount
   useEffect(() => {
@@ -52,10 +63,10 @@ export const MosaicEffectGenerator: React.FC = () => {
     img.src = "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80";
   }, []);
 
-  // Clear Tile Selections when Grid Dimension or Shape Mode changes
+  // Clear Tile Selections when Grid Dimension changes
   useEffect(() => {
     setSelectedTiles(new Set());
-  }, [gridCols, gridRows, tileShapeMode]);
+  }, [gridCount]);
 
   // Handle Image Upload
   const handleUploadImage = (img: HTMLImageElement) => {
@@ -63,31 +74,15 @@ export const MosaicEffectGenerator: React.FC = () => {
     setSelectedTiles(new Set());
   };
 
-  // Convert Hex Color + Alpha to RGBA string
-  const hexToRgba = (hex: string, alphaPercent: number) => {
-    let c = hex.replace("#", "");
-    if (c.length === 3) c = c.split("").map((x) => x + x).join("");
-    const num = parseInt(c, 16) || 0;
-    const r = (num >> 16) & 255;
-    const g = (num >> 8) & 255;
-    const b = num & 255;
-    return `rgba(${r}, ${g}, ${b}, ${alphaPercent / 100})`;
-  };
-
-  // Helper to calculate effective column and row count based on tile shape mode
-  const getEffectiveGridCounts = useCallback((drawW: number, drawH: number) => {
-    let numCols = gridCols;
-    let numRows = gridRows;
-
-    if (tileShapeMode === "square") {
-      const tileWidthNorm = drawW / gridCols;
-      numRows = Math.max(1, Math.round(drawH / tileWidthNorm));
-    }
-
+  // Calculate Square Tile Grid Counts
+  const getSquareGridCounts = useCallback((drawW: number, drawH: number) => {
+    const numCols = gridCount;
+    const tileWidthNorm = drawW / gridCount;
+    const numRows = Math.max(1, Math.round(drawH / tileWidthNorm));
     return { numCols, numRows };
-  }, [gridCols, gridRows, tileShapeMode]);
+  }, [gridCount]);
 
-  // Render Loop to Draw Image, Tile Effects, Selected Tile Highlights, and Grid Lines
+  // Render Loop to Draw Base Image, Tile Effects, Selected Borders, and Reference Grid
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -99,14 +94,14 @@ export const MosaicEffectGenerator: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Studio Dark Background
+    // Studio Dark Theme Canvas Background
     const bgGrad = ctx.createLinearGradient(0, 0, w, h);
     bgGrad.addColorStop(0, "#08080e");
     bgGrad.addColorStop(1, "#12121c");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle Background Grid Pattern
+    // Studio Grid Accent Texture
     ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
     ctx.lineWidth = 1;
     const bgStep = 40;
@@ -124,7 +119,6 @@ export const MosaicEffectGenerator: React.FC = () => {
     }
 
     if (sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
-      // Scale and center image inside canvas bounds with aspect ratio preservation
       const imgW = sourceImage.naturalWidth;
       const imgH = sourceImage.naturalHeight;
       const imgAspect = imgW / imgH;
@@ -145,19 +139,19 @@ export const MosaicEffectGenerator: React.FC = () => {
 
       imageBoundsRef.current = { drawX, drawY, drawW, drawH };
 
-      const { numCols, numRows } = getEffectiveGridCounts(drawW, drawH);
+      const { numCols, numRows } = getSquareGridCounts(drawW, drawH);
 
-      // Drop Shadow for Image Container
+      // Drop Shadow for Main Canvas Frame
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
       ctx.shadowBlur = 40;
       ctx.shadowOffsetY = 15;
 
-      // Draw Base Clean Uploaded Image
+      // Draw Base Image
       ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
       ctx.restore();
 
-      // Render Selected Tile Generative Effects (Cutout, Mosaic, Blur, Invert)
+      // Render Selected Tile Style Effects (Cutout, Mosaic, Blur, Invert)
       if (isEffectEnabled && selectedTiles.size > 0) {
         selectedTiles.forEach((tileId) => {
           const [r, c] = tileId.split(",").map(Number);
@@ -173,24 +167,17 @@ export const MosaicEffectGenerator: React.FC = () => {
             const srcH = sourceImage.naturalHeight / numRows;
 
             if (selectedEffectMode === "cutout") {
-              // Mode 1: Cutout / Transparent Punch
+              // 1. Cutout Mode: Fills with configurable background color or transparent
               ctx.save();
               ctx.clearRect(tileX, tileY, tileW, tileH);
-              ctx.fillStyle = "#0c0c14";
-              ctx.fillRect(tileX, tileY, tileW, tileH);
 
-              // Subdued hatched pattern for cutout tile
-              ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-              ctx.lineWidth = 1;
-              for (let i = -tileW; i < tileW + tileH; i += 12) {
-                ctx.beginPath();
-                ctx.moveTo(tileX + i, tileY);
-                ctx.lineTo(tileX + i + tileH, tileY + tileH);
-                ctx.stroke();
+              if (cutoutBgColor !== "transparent") {
+                ctx.fillStyle = cutoutBgColor;
+                ctx.fillRect(tileX, tileY, tileW, tileH);
               }
               ctx.restore();
             } else if (selectedEffectMode === "mosaic") {
-              // Mode 2: Pixelated Mosaic
+              // 2. Mosaic Mode: Pixelates tile into configurable block size
               ctx.save();
               const blockSize = Math.max(4, mosaicBlockSize);
               const tempW = Math.max(1, Math.floor(tileW / blockSize));
@@ -210,7 +197,7 @@ export const MosaicEffectGenerator: React.FC = () => {
               }
               ctx.restore();
             } else if (selectedEffectMode === "blur") {
-              // Mode 3: Blur / Frosted
+              // 3. Blur Mode
               ctx.save();
               ctx.beginPath();
               ctx.rect(tileX, tileY, tileW, tileH);
@@ -219,7 +206,7 @@ export const MosaicEffectGenerator: React.FC = () => {
               ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, tileX, tileY, tileW, tileH);
               ctx.restore();
             } else if (selectedEffectMode === "invert") {
-              // Mode 4: Color Invert / Negative
+              // 4. Invert Mode
               ctx.save();
               ctx.beginPath();
               ctx.rect(tileX, tileY, tileW, tileH);
@@ -232,37 +219,32 @@ export const MosaicEffectGenerator: React.FC = () => {
         });
       }
 
-      // Render Selected Grid Tile Highlight Outlines
-      selectedTiles.forEach((tileId) => {
-        const [r, c] = tileId.split(",").map(Number);
-        if (r < numRows && c < numCols) {
-          const tileW = drawW / numCols;
-          const tileH = drawH / numRows;
-          const tileX = drawX + c * tileW;
-          const tileY = drawY + r * tileH;
+      // Render Selected Tile Borders (Border Size > 0 & Color != transparent)
+      if (borderWidth > 0 && borderColor !== "transparent") {
+        selectedTiles.forEach((tileId) => {
+          const [r, c] = tileId.split(",").map(Number);
+          if (r < numRows && c < numCols) {
+            const tileW = drawW / numCols;
+            const tileH = drawH / numRows;
+            const tileX = drawX + c * tileW;
+            const tileY = drawY + r * tileH;
 
-          // Highlight Overlay
-          ctx.save();
-          ctx.fillStyle = hexToRgba(lineColor, 25);
-          ctx.fillRect(tileX, tileY, tileW, tileH);
-
-          // Glowing Outline for Selected Tile (Only if showSelectedTileBorder is ON)
-          if (showSelectedTileBorder) {
-            ctx.strokeStyle = lineColor;
-            ctx.lineWidth = Math.max(3, lineWidth + 1);
+            ctx.save();
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = borderWidth;
             ctx.strokeRect(tileX, tileY, tileW, tileH);
+            ctx.restore();
           }
-          ctx.restore();
-        }
-      });
+        });
+      }
 
-      // Render Grid Lines Overlay (Only when showGridLines is ON)
-      if (showGridLines) {
+      // Render Reference Base Grid Overlay (Subtle Studio Alignment Guide Lines)
+      if (showReferenceGrid) {
         ctx.save();
-        ctx.strokeStyle = lineColor;
-        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+        ctx.lineWidth = 1;
 
-        // Draw Vertical Divider Lines
+        // Vertical Guide Lines
         for (let c = 1; c < numCols; c++) {
           const lineX = drawX + (c / numCols) * drawW;
           ctx.beginPath();
@@ -271,7 +253,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           ctx.stroke();
         }
 
-        // Draw Horizontal Divider Lines
+        // Horizontal Guide Lines
         for (let r = 1; r < numRows; r++) {
           const lineY = drawY + (r / numRows) * drawH;
           ctx.beginPath();
@@ -280,19 +262,18 @@ export const MosaicEffectGenerator: React.FC = () => {
           ctx.stroke();
         }
 
-        // Draw Outer Frame Border Line
+        // Outer Image Frame Guide Border
         ctx.strokeRect(drawX, drawY, drawW, drawH);
         ctx.restore();
       }
     } else {
       imageBoundsRef.current = null;
-      // Prompt when image is loading
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.font = '600 16px "Space Mono", monospace';
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN MOSAIC GRID SELECTION", w / 2, h / 2);
     }
-  }, [sourceImage, gridCols, gridRows, tileShapeMode, showGridLines, lineWidth, lineColor, selectedTiles, isEffectEnabled, selectedEffectMode, mosaicBlockSize, blurRadius, getEffectiveGridCounts]);
+  }, [sourceImage, gridCount, showReferenceGrid, borderWidth, borderColor, selectedTiles, isEffectEnabled, selectedEffectMode, cutoutBgColor, mosaicBlockSize, blurRadius, getSquareGridCounts]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -303,7 +284,7 @@ export const MosaicEffectGenerator: React.FC = () => {
     renderCanvas();
   }, [renderCanvas]);
 
-  // Handle Interactive Click Selection on Canvas Image Grid
+  // Handle Interactive Canvas Tile Selection
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     const bounds = imageBoundsRef.current;
@@ -318,12 +299,11 @@ export const MosaicEffectGenerator: React.FC = () => {
 
     const { drawX, drawY, drawW, drawH } = bounds;
 
-    // Check if click is inside the image viewport bounds
     if (clickX >= drawX && clickX <= drawX + drawW && clickY >= drawY && clickY <= drawY + drawH) {
       const relX = clickX - drawX;
       const relY = clickY - drawY;
 
-      const { numCols, numRows } = getEffectiveGridCounts(drawW, drawH);
+      const { numCols, numRows } = getSquareGridCounts(drawW, drawH);
 
       const col = Math.floor((relX / drawW) * numCols);
       const row = Math.floor((relY / drawH) * numRows);
@@ -347,7 +327,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Mosaic Grid Selector</div>
+        <div className={styles.brandSubtitle}>Mosaic Grid Studio</div>
 
         {/* Image Upload Component */}
         <ImageUploader
@@ -355,15 +335,35 @@ export const MosaicEffectGenerator: React.FC = () => {
           onUploadImage={handleUploadImage}
         />
 
-        {/* Tile Shape Mode */}
+        {/* 1. Square Grid Dimension */}
         <div className={styles.sectionHeader}>
-          <span>Tile Aspect Ratio</span>
+          <span>Square Grid Division</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Square Grid Quantity</span>
+            <span className={styles.controlValue}>{gridCount} Columns</span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={30}
+            step={1}
+            value={gridCount}
+            onChange={(e) => setGridCount(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* 2. Reference Base Grid Overlay Toggle */}
+        <div className={styles.sectionHeader}>
+          <span>Reference Overlay</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Tile Shape Mode</span>
-            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{tileShapeMode}</span>
+            <span className={styles.controlLabel}>Show Reference Grid</span>
+            <span className={styles.controlValue}>{showReferenceGrid ? "VISIBLE" : "HIDDEN"}</span>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button
@@ -372,13 +372,13 @@ export const MosaicEffectGenerator: React.FC = () => {
                 padding: "8px",
                 fontSize: "12px",
                 fontWeight: 700,
-                background: tileShapeMode === "square" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: tileShapeMode === "square" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                color: tileShapeMode === "square" ? "#00e5ff" : "#ffffff"
+                background: showReferenceGrid ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: showReferenceGrid ? "#ffffff" : "rgba(255, 255, 255, 0.15)",
+                color: "#ffffff"
               }}
-              onClick={() => setTileShapeMode("square")}
+              onClick={() => setShowReferenceGrid(true)}
             >
-              🔳 Square (1:1)
+              ✓ Visible
             </button>
             <button
               style={{
@@ -386,65 +386,101 @@ export const MosaicEffectGenerator: React.FC = () => {
                 padding: "8px",
                 fontSize: "12px",
                 fontWeight: 700,
-                background: tileShapeMode === "rectangle" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: tileShapeMode === "rectangle" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                color: tileShapeMode === "rectangle" ? "#00e5ff" : "#ffffff"
+                background: !showReferenceGrid ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: !showReferenceGrid ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
+                color: !showReferenceGrid ? "#ff3b30" : "#ffffff"
               }}
-              onClick={() => setTileShapeMode("rectangle")}
+              onClick={() => setShowReferenceGrid(false)}
             >
-              ▮ Rectangle
+              ✕ Hidden
             </button>
           </div>
         </div>
 
-        {/* Grid Division Controls */}
+        {/* 3. Selected Tile Border Size & Color (Default White, Includes Transparent) */}
         <div className={styles.sectionHeader}>
-          <span>Grid Division</span>
+          <span>Selected Tile Border</span>
         </div>
 
+        {/* Border Thickness Slider */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>
-              {tileShapeMode === "square" ? "Square Tile Grid Columns" : "Grid Columns"}
-            </span>
-            <span className={styles.controlValue}>{gridCols} Cols</span>
+            <span className={styles.controlLabel}>Border Thickness</span>
+            <span className={styles.controlValue}>{borderWidth}px</span>
           </div>
           <input
             type="range"
-            min={1}
-            max={30}
+            min={0}
+            max={20}
             step={1}
-            value={gridCols}
-            onChange={(e) => setGridCols(parseInt(e.target.value))}
+            value={borderWidth}
+            onChange={(e) => setBorderWidth(parseInt(e.target.value))}
           />
         </div>
 
-        {tileShapeMode === "rectangle" && (
+        {/* Border Color Picker & Swatches */}
+        {borderWidth > 0 && (
           <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-            <div className={styles.controlHeader}>
-              <span className={styles.controlLabel}>Grid Rows</span>
-              <span className={styles.controlValue}>{gridRows} Rows</span>
+            <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+              <span className={styles.controlLabel}>Border Color</span>
+              <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
+                {borderColor === "transparent" ? "TRANSPARENT" : borderColor}
+              </span>
             </div>
-            <input
-              type="range"
-              min={1}
-              max={30}
-              step={1}
-              value={gridRows}
-              onChange={(e) => setGridRows(parseInt(e.target.value))}
-            />
+
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <input
+                type="color"
+                value={borderColor === "transparent" ? "#ffffff" : borderColor}
+                onChange={(e) => setBorderColor(e.target.value)}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  padding: "0",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  background: "transparent"
+                }}
+              />
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+                {BORDER_PRESET_COLORS.map((color) => (
+                  <button
+                    key={color.name}
+                    onClick={() => setBorderColor(color.value)}
+                    style={{
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "50%",
+                      backgroundColor: color.value === "transparent" ? "rgba(255,255,255,0.1)" : color.value,
+                      border: borderColor === color.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
+                      cursor: "pointer",
+                      boxShadow: borderColor === color.value ? "0 0 8px rgba(255,255,255,0.8)" : "none",
+                      padding: 0,
+                      position: "relative",
+                      overflow: "hidden"
+                    }}
+                    title={color.name}
+                  >
+                    {color.value === "transparent" && (
+                      <span style={{ fontSize: "10px", color: "#ff3b30", fontWeight: 900, display: "block" }}>✕</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Tile Effect Settings (Master Toggle + Mode Selection) */}
+        {/* 4. Style Selection & Sub-Parameters (Clean Text Buttons) */}
         <div className={styles.sectionHeader}>
-          <span>Tile Effect Settings</span>
+          <span>Tile Effect Styles</span>
         </div>
 
-        {/* Master Effect Toggle Switch */}
+        {/* Master Effect Switch */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Apply Tile Effects</span>
+            <span className={styles.controlLabel}>Tile Effect Switch</span>
             <span className={styles.controlValue}>{isEffectEnabled ? "ENABLED" : "DISABLED"}</span>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
@@ -454,9 +490,9 @@ export const MosaicEffectGenerator: React.FC = () => {
                 padding: "8px",
                 fontSize: "12px",
                 fontWeight: 700,
-                background: isEffectEnabled ? "rgba(0, 255, 34, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: isEffectEnabled ? "#00ff22" : "rgba(255, 255, 255, 0.15)",
-                color: isEffectEnabled ? "#00ff22" : "#ffffff"
+                background: isEffectEnabled ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                borderColor: isEffectEnabled ? "#ffffff" : "rgba(255, 255, 255, 0.15)",
+                color: "#ffffff"
               }}
               onClick={() => setIsEffectEnabled(true)}
             >
@@ -470,7 +506,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                 fontWeight: 700,
                 background: !isEffectEnabled ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
                 borderColor: !isEffectEnabled ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
-                color: !isEffectEnabled ? "#ff3b30" : "#ffffff"
+                color: !showReferenceGrid ? "#ff3b30" : "#ffffff"
               }}
               onClick={() => setIsEffectEnabled(false)}
             >
@@ -479,119 +515,97 @@ export const MosaicEffectGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* Effect Mode Selection (Cutout, Mosaic, Blur, Invert) */}
+        {/* Clean Text Buttons for Style Mode Selection */}
         {isEffectEnabled && (
           <>
             <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
               <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-                <span className={styles.controlLabel}>Effect Mode</span>
+                <span className={styles.controlLabel}>Select Style</span>
                 <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{selectedEffectMode}</span>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <button
-                  style={{
-                    padding: "8px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    background: selectedEffectMode === "cutout" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    borderColor: selectedEffectMode === "cutout" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                    color: selectedEffectMode === "cutout" ? "#00e5ff" : "#ffffff"
-                  }}
-                  onClick={() => setSelectedEffectMode("cutout")}
-                >
-                  🕳️ Cutout
-                </button>
-                <button
-                  style={{
-                    padding: "8px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    background: selectedEffectMode === "mosaic" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    borderColor: selectedEffectMode === "mosaic" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                    color: selectedEffectMode === "mosaic" ? "#00e5ff" : "#ffffff"
-                  }}
-                  onClick={() => setSelectedEffectMode("mosaic")}
-                >
-                  👾 Mosaic
-                </button>
-                <button
-                  style={{
-                    padding: "8px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    background: selectedEffectMode === "blur" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    borderColor: selectedEffectMode === "blur" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                    color: selectedEffectMode === "blur" ? "#00e5ff" : "#ffffff"
-                  }}
-                  onClick={() => setSelectedEffectMode("blur")}
-                >
-                  🌀 Blur
-                </button>
-                <button
-                  style={{
-                    padding: "8px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    background: selectedEffectMode === "invert" ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    borderColor: selectedEffectMode === "invert" ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                    color: selectedEffectMode === "invert" ? "#00e5ff" : "#ffffff"
-                  }}
-                  onClick={() => setSelectedEffectMode("invert")}
-                >
-                  🔄 Invert
-                </button>
+                {(["cutout", "mosaic", "blur", "invert"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    style={{
+                      padding: "10px",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      textTransform: "capitalize",
+                      background: selectedEffectMode === mode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                      borderColor: selectedEffectMode === mode ? "#ffffff" : "rgba(255, 255, 255, 0.12)",
+                      color: selectedEffectMode === mode ? "#ffffff" : "rgba(255, 255, 255, 0.7)"
+                    }}
+                    onClick={() => setSelectedEffectMode(mode)}
+                  >
+                    {mode}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Selected Tile Border Toggle */}
-            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-              <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-                <span className={styles.controlLabel}>Selected Tile Border</span>
-                <span className={styles.controlValue}>{showSelectedTileBorder ? "VISIBLE" : "HIDDEN"}</span>
+            {/* 5. Sub-Parameters */}
+            {/* Cutout Mode: Background Color Picker */}
+            {selectedEffectMode === "cutout" && (
+              <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+                <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+                  <span className={styles.controlLabel}>Cutout Background Color</span>
+                  <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
+                    {cutoutBgColor === "transparent" ? "TRANSPARENT" : cutoutBgColor}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input
+                    type="color"
+                    value={cutoutBgColor === "transparent" ? "#0a0a0f" : cutoutBgColor}
+                    onChange={(e) => setCutoutBgColor(e.target.value)}
+                    style={{
+                      width: "36px",
+                      height: "36px",
+                      padding: "0",
+                      border: "none",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      background: "transparent"
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+                    {CUTOUT_BG_COLORS.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => setCutoutBgColor(color.value)}
+                        style={{
+                          width: "22px",
+                          height: "22px",
+                          borderRadius: "50%",
+                          backgroundColor: color.value === "transparent" ? "rgba(255,255,255,0.1)" : color.value,
+                          border: cutoutBgColor === color.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
+                          cursor: "pointer",
+                          padding: 0
+                        }}
+                        title={color.name}
+                      >
+                        {color.value === "transparent" && (
+                          <span style={{ fontSize: "10px", color: "#ff3b30", fontWeight: 900, display: "block" }}>✕</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    background: showSelectedTileBorder ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    borderColor: showSelectedTileBorder ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                    color: showSelectedTileBorder ? "#00e5ff" : "#ffffff"
-                  }}
-                  onClick={() => setShowSelectedTileBorder(true)}
-                >
-                  ✓ Border On
-                </button>
-                <button
-                  style={{
-                    flex: 1,
-                    padding: "8px",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    background: !showSelectedTileBorder ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                    borderColor: !showSelectedTileBorder ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
-                    color: !showSelectedTileBorder ? "#ff3b30" : "#ffffff"
-                  }}
-                  onClick={() => setShowSelectedTileBorder(false)}
-                >
-                  ✕ Border Off
-                </button>
-              </div>
-            </div>
+            )}
 
-            {/* Mosaic Block Size Slider */}
+            {/* Mosaic Mode: Resolution / Block Size Slider */}
             {selectedEffectMode === "mosaic" && (
               <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
                 <div className={styles.controlHeader}>
-                  <span className={styles.controlLabel}>Mosaic Block Size</span>
+                  <span className={styles.controlLabel}>Mosaic Resolution (Block Size)</span>
                   <span className={styles.controlValue}>{mosaicBlockSize}px</span>
                 </div>
                 <input
                   type="range"
                   min={4}
-                  max={32}
+                  max={40}
                   step={2}
                   value={mosaicBlockSize}
                   onChange={(e) => setMosaicBlockSize(parseInt(e.target.value))}
@@ -599,7 +613,7 @@ export const MosaicEffectGenerator: React.FC = () => {
               </div>
             )}
 
-            {/* Blur Radius Slider */}
+            {/* Blur Mode: Blur Radius Slider */}
             {selectedEffectMode === "blur" && (
               <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
                 <div className={styles.controlHeader}>
@@ -619,114 +633,10 @@ export const MosaicEffectGenerator: React.FC = () => {
           </>
         )}
 
-        {/* Grid Line Display Toggle */}
-        <div className={styles.sectionHeader}>
-          <span>Line Display Settings</span>
-        </div>
-
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Show Grid Lines</span>
-            <span className={styles.controlValue}>{showGridLines ? "VISIBLE" : "HIDDEN"}</span>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "12px",
-                fontWeight: 700,
-                background: showGridLines ? "rgba(0, 229, 255, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: showGridLines ? "#00e5ff" : "rgba(255, 255, 255, 0.15)",
-                color: showGridLines ? "#00e5ff" : "#ffffff"
-              }}
-              onClick={() => setShowGridLines(true)}
-            >
-              ✓ Visible
-            </button>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "12px",
-                fontWeight: 700,
-                background: !showGridLines ? "rgba(255, 59, 48, 0.2)" : "rgba(255, 255, 255, 0.05)",
-                borderColor: !showGridLines ? "#ff3b30" : "rgba(255, 255, 255, 0.15)",
-                color: !showGridLines ? "#ff3b30" : "#ffffff"
-              }}
-              onClick={() => setShowGridLines(false)}
-            >
-              ✕ Hidden
-            </button>
-          </div>
-        </div>
-
-        {/* Line Thickness */}
-        {showGridLines && (
-          <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-            <div className={styles.controlHeader}>
-              <span className={styles.controlLabel}>Line Thickness</span>
-              <span className={styles.controlValue}>{lineWidth}px</span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={20}
-              step={1}
-              value={lineWidth}
-              onChange={(e) => setLineWidth(parseInt(e.target.value))}
-            />
-          </div>
-        )}
-
-        {/* Line Color Picker & Swatches */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Line &amp; Highlight Color</span>
-            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{lineColor}</span>
-          </div>
-
-          <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
-            <input
-              type="color"
-              value={lineColor}
-              onChange={(e) => setLineColor(e.target.value)}
-              style={{
-                width: "36px",
-                height: "36px",
-                padding: "0",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                background: "transparent"
-              }}
-            />
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
-              {PRESET_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => setLineColor(color.value)}
-                  style={{
-                    width: "22px",
-                    height: "22px",
-                    borderRadius: "50%",
-                    backgroundColor: color.value,
-                    border: lineColor === color.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
-                    cursor: "pointer",
-                    boxShadow: lineColor === color.value ? `0 0 8px ${color.value}` : "none",
-                    padding: 0
-                  }}
-                  title={color.name}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Selected Tiles Indicator */}
         <div
           style={{
-            background: selectedTiles.size > 0 ? "rgba(0, 229, 255, 0.08)" : "rgba(255, 255, 255, 0.05)",
+            background: selectedTiles.size > 0 ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.04)",
             border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "6px",
             padding: "12px",
@@ -738,8 +648,8 @@ export const MosaicEffectGenerator: React.FC = () => {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Click Canvas to Select</span>
-            <span style={{ color: lineColor, fontWeight: 700 }}>
-              {selectedTiles.size} Selected
+            <span style={{ color: "#ffffff", fontWeight: 700 }}>
+              {selectedTiles.size} Tiles Selected
             </span>
           </div>
 
@@ -781,7 +691,7 @@ export const MosaicEffectGenerator: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • {selectedEffectMode.toUpperCase()} Effect ({selectedTiles.size} Tiles Affected)
+          IMG300 Studio • Square Grid Matrix ({gridCount} Columns • {selectedTiles.size} Selected)
         </div>
       </div>
     </div>
