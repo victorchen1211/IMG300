@@ -226,13 +226,32 @@ export const MosaicEffectGenerator: React.FC = () => {
               }
               ctx.restore();
 
-              // Paste the original cutout image tile into the Extended Background Panel
+              // Paste the original cutout image tile into the Extended Background Panel with Optical Mirror Reflection
               if (activeMirror !== "none") {
-                const extTileX = extX + c * tileW + borderInset;
-                const extTileY = extY + r * tileH + borderInset;
+                let targetCol = c;
+                let targetRow = r;
+
+                if (activeMirror === "left" || activeMirror === "right") {
+                  targetCol = (numCols - 1) - c;
+                } else if (activeMirror === "up" || activeMirror === "down") {
+                  targetRow = (numRows - 1) - r;
+                }
+
+                const extTileX = extX + targetCol * tileW + borderInset;
+                const extTileY = extY + targetRow * tileH + borderInset;
 
                 ctx.save();
-                ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, extTileX, extTileY, effW, effH);
+                if (activeMirror === "left" || activeMirror === "right") {
+                  // Horizontal Mirror Pixel Transformation
+                  ctx.translate(extTileX + effW, extTileY);
+                  ctx.scale(-1, 1);
+                  ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, 0, 0, effW, effH);
+                } else if (activeMirror === "up" || activeMirror === "down") {
+                  // Vertical Mirror Pixel Transformation
+                  ctx.translate(extTileX, extTileY + effH);
+                  ctx.scale(1, -1);
+                  ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, 0, 0, effW, effH);
+                }
                 ctx.restore();
               }
             } else if (selectedEffectMode === "mosaic") {
