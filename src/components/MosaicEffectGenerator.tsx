@@ -428,7 +428,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           <input
             type="range"
             min={1}
-            max={30}
+            max={100}
             step={1}
             value={gridCount}
             onChange={(e) => setGridCount(parseInt(e.target.value))}
