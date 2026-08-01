@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 import styles from "../app/page.module.scss";
 
 export const SocialMediaIdentity: React.FC = () => {
@@ -11,8 +12,43 @@ export const SocialMediaIdentity: React.FC = () => {
   // Control State
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
+  // MediaPipe FaceLandmarker Ref
+  const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // Initialize MediaPipe FaceLandmarker Model
+  useEffect(() => {
+    let isMounted = true;
+    const initMediaPipe = async () => {
+      try {
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+        );
+
+        const faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numFaces: 1
+        });
+
+        if (isMounted) {
+          faceLandmarkerRef.current = faceLandmarker;
+        }
+      } catch (err) {
+        console.warn("MediaPipe load warning:", err);
+      }
+    };
+
+    initMediaPipe();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Start Camera Stream
   const startCamera = async () => {
@@ -41,9 +77,10 @@ export const SocialMediaIdentity: React.FC = () => {
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
+    setFaceDetected(false);
   };
 
-  // Main Render Loop
+  // Main Render Loop - Step 1: Detect Face and Draw Bounding Box
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -53,16 +90,99 @@ export const SocialMediaIdentity: React.FC = () => {
 
     const w = canvas.width;
     const h = canvas.height;
+    const now = performance.now();
 
     ctx.clearRect(0, 0, w, h);
 
     if (isCameraActive && video && video.readyState >= 2) {
-      // Draw Clean Mirrored Live Webcam Stream
+      // 1. Draw Clean Mirrored Live Webcam Feed
       ctx.save();
       ctx.translate(w, 0);
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, w, h);
       ctx.restore();
+
+      // 2. Real-time Face AI Detection & Bounding Box Framing
+      if (faceLandmarkerRef.current) {
+        try {
+          const results = faceLandmarkerRef.current.detectForVideo(video, now);
+          if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+            setFaceDetected(true);
+            const landmarks = results.faceLandmarks[0];
+
+            // Compute Bounding Box Coordinates
+            let minX = 1, maxX = 0, minY = 1, maxY = 0;
+            landmarks.forEach((pt) => {
+              if (pt.x < minX) minX = pt.x;
+              if (pt.x > maxX) maxX = pt.x;
+              if (pt.y < minY) minY = pt.y;
+              if (pt.y > maxY) maxY = pt.y;
+            });
+
+            // Mirrored Canvas Bounding Box
+            const padding = 15;
+            const boxX = (1 - maxX) * w - padding;
+            const boxY = minY * h - padding;
+            const boxW = (maxX - minX) * w + padding * 2;
+            const boxH = (maxY - minY) * h + padding * 2;
+
+            // Draw Cyber Green Neon Bounding Box Around Face
+            ctx.save();
+            ctx.strokeStyle = "#00ff22";
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+            // Draw HUD Corner Brackets
+            const bracketLength = 20;
+            ctx.lineWidth = 4;
+
+            // Top-Left Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX, boxY + bracketLength);
+            ctx.lineTo(boxX, boxY);
+            ctx.lineTo(boxX + bracketLength, boxY);
+            ctx.stroke();
+
+            // Top-Right Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW - bracketLength, boxY);
+            ctx.lineTo(boxX + boxW, boxY);
+            ctx.lineTo(boxX + boxW, boxY + bracketLength);
+            ctx.stroke();
+
+            // Bottom-Left Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX, boxY + boxH - bracketLength);
+            ctx.lineTo(boxX, boxY + boxH);
+            ctx.lineTo(boxX + bracketLength, boxY + boxH);
+            ctx.stroke();
+
+            // Bottom-Right Corner
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxW - bracketLength, boxY + boxH);
+            ctx.lineTo(boxX + boxW, boxY + boxH);
+            ctx.lineTo(boxX + boxW, boxY + boxH - bracketLength);
+            ctx.stroke();
+
+            // Top Label Tag: FACE DETECTED
+            ctx.fillStyle = "rgba(0, 255, 34, 0.2)";
+            ctx.fillRect(boxX, boxY - 24, 130, 20);
+            ctx.strokeStyle = "#00ff22";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(boxX, boxY - 24, 130, 20);
+
+            ctx.fillStyle = "#00ff22";
+            ctx.font = '800 10px "Space Mono", monospace';
+            ctx.fillText("● FACE DETECTED", boxX + 8, boxY - 10);
+
+            ctx.restore();
+          } else {
+            setFaceDetected(false);
+          }
+        } catch (e) {
+          // Frame skip
+        }
+      }
     } else {
       // Dark Studio Background when camera is inactive
       const bgGrad = ctx.createLinearGradient(0, 0, w, h);
@@ -71,7 +191,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Subtle background grid accent
+      // Background grid accent
       ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
       ctx.lineWidth = 1;
       const bgStep = 40;
@@ -91,7 +211,7 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.fillStyle = "#00ff22";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("CLICK START WEBCAM TO OPEN LIVE CAMERA FEED", w / 2, h / 2);
+      ctx.fillText("START WEBCAM FOR STEP 1: AI FACE DETECTION & FRAMING", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -111,12 +231,12 @@ export const SocialMediaIdentity: React.FC = () => {
 
   return (
     <div className={styles.appContainer} style={{ background: "#0a0a0f", minHeight: "100vh" }}>
-      {/* Sidebar Tool Panel - Clean & Minimal */}
+      {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Webcam Live Feed</div>
+        <div className={styles.brandSubtitle}>Step 1: AI Face Bounding Box</div>
 
-        {/* Camera Control Section Only */}
+        {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
           <span>Webcam Control</span>
         </div>
@@ -153,6 +273,27 @@ export const SocialMediaIdentity: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Status Indicator */}
+        <div
+          style={{
+            background: isCameraActive ? "rgba(0, 255, 34, 0.1)" : "rgba(255, 255, 255, 0.05)",
+            border: isCameraActive ? "1px solid rgba(0, 255, 34, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "6px",
+            padding: "12px",
+            fontSize: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px"
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face AI Tracking</span>
+            <span style={{ color: faceDetected ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
+              {faceDetected ? "TRACKED" : "SEARCHING..."}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Main Viewport */}
@@ -166,7 +307,7 @@ export const SocialMediaIdentity: React.FC = () => {
             style={{ display: "none" }}
           />
 
-          {/* Clean Real-time Webcam Canvas */}
+          {/* Real-time Canvas */}
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
@@ -180,7 +321,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Clean Live Webcam Stream View
+          Step 1: AI Real-Time Face Detection & Bounding Box HUD Framing
         </div>
       </div>
     </div>
