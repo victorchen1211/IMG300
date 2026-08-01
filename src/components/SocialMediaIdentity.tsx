@@ -15,11 +15,11 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // Face Crop Controls
-  const [centerDisplaySize, setCenterDisplaySize] = useState<number>(320); // Center Face Size (200px ~ 600px)
-  const [cropPadding, setCropPadding] = useState<number>(30); // Crop Padding
+  // Face Region Display Controls
+  const [centerDisplaySize, setCenterDisplaySize] = useState<number>(320);
+  const [cropPadding, setCropPadding] = useState<number>(30);
 
-  // Refs for MediaPipe & Live Face Crop
+  // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastVideoTimeRef = useRef<number>(-1);
@@ -30,16 +30,15 @@ export const SocialMediaIdentity: React.FC = () => {
     let isMounted = true;
     const initMediaPipe = async () => {
       try {
-        setModelStatus("Loading MediaPipe Engine...");
+        setModelStatus("Loading Engine...");
         const filesetResolver = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
         );
 
-        setModelStatus("Loading Face Task...");
+        setModelStatus("Loading Task...");
         let faceLandmarker: FaceLandmarker | null = null;
 
         try {
-          // Attempt 1: GPU Delegate
           faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
               modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -49,7 +48,6 @@ export const SocialMediaIdentity: React.FC = () => {
             numFaces: 1
           });
         } catch (gpuErr) {
-          // Attempt 2: CPU Fallback
           faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
               modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -62,12 +60,12 @@ export const SocialMediaIdentity: React.FC = () => {
 
         if (isMounted && faceLandmarker) {
           faceLandmarkerRef.current = faceLandmarker;
-          setModelStatus("AI Model Ready");
+          setModelStatus("Model Ready");
         }
       } catch (err: any) {
         console.warn("MediaPipe load error:", err);
         if (isMounted) {
-          setModelStatus("Model Load Error");
+          setModelStatus("Model Error");
         }
       }
     };
@@ -122,14 +120,14 @@ export const SocialMediaIdentity: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Studio Background
+    // Pure Studio Dark Background
     const bgGrad = ctx.createLinearGradient(0, 0, w, h);
     bgGrad.addColorStop(0, "#08080e");
     bgGrad.addColorStop(1, "#12121c");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Background grid accent
+    // Subtle background grid accent
     ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
     ctx.lineWidth = 1;
     const bgStep = 40;
@@ -150,7 +148,7 @@ export const SocialMediaIdentity: React.FC = () => {
       const vW = video.videoWidth || 1280;
       const vH = video.videoHeight || 720;
 
-      // 1. Perform AI Face Landmark Detection
+      // 1. Perform AI Face Region Detection
       if (faceLandmarkerRef.current) {
         try {
           const nowMs = performance.now();
@@ -185,20 +183,12 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render CENTER CANVAS: CROPPED FACE PORTRAIT ONLY
+      // 2. Render CENTER CANVAS: PURE CLEAN CROPPED FACE REGION ONLY (NO BORDERS OR COLORS)
       const normCrop = rawFaceCropRef.current;
       const centerW = centerDisplaySize;
-      const centerH = centerDisplaySize * 1.15; // Aspect ratio
+      const centerH = centerDisplaySize * 1.15;
       const centerX = (w - centerW) / 2;
       const centerY = (h - centerH) / 2;
-
-      ctx.save();
-      // Container Backdrop for Centered Cropped Face
-      ctx.fillStyle = "#0a0a12";
-      ctx.fillRect(centerX - 8, centerY - 8, centerW + 16, centerH + 16);
-      ctx.strokeStyle = "rgba(0, 255, 34, 0.4)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(centerX - 8, centerY - 8, centerW + 16, centerH + 16);
 
       if (normCrop) {
         // Calculate Source Video Crop Coordinates with Padding
@@ -215,7 +205,7 @@ export const SocialMediaIdentity: React.FC = () => {
         const srcW = (cropMaxX - cropMinX) * vW;
         const srcH = (cropMaxY - cropMinY) * vH;
 
-        // Draw Mirrored Cropped Face Portrait in Center Canvas
+        // Draw Pure Mirrored Face Region Crop in Center (No Colored Borders or Lines)
         ctx.save();
         ctx.beginPath();
         ctx.rect(centerX, centerY, centerW, centerH);
@@ -225,65 +215,19 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.scale(-1, 1);
         ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, centerW, centerH);
         ctx.restore();
-
-        // Cyber Glowing Corner Brackets for Center Cropped Face
-        const bracketLength = Math.max(6, Math.min(20, Math.floor(centerW * 0.15)));
-        ctx.lineWidth = Math.max(2, Math.min(4, Math.floor(centerW * 0.03)));
-        ctx.strokeStyle = "#00ff22";
-
-        // Top-Left
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY + bracketLength);
-        ctx.lineTo(centerX, centerY);
-        ctx.lineTo(centerX + bracketLength, centerY);
-        ctx.stroke();
-
-        // Top-Right
-        ctx.beginPath();
-        ctx.moveTo(centerX + centerW - bracketLength, centerY);
-        ctx.lineTo(centerX + centerW, centerY);
-        ctx.lineTo(centerX + centerW, centerY + bracketLength);
-        ctx.stroke();
-
-        // Bottom-Left
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY + centerH - bracketLength);
-        ctx.lineTo(centerX, centerY + centerH);
-        ctx.lineTo(centerX + bracketLength, centerY + centerH);
-        ctx.stroke();
-
-        // Bottom-Right
-        ctx.beginPath();
-        ctx.moveTo(centerX + centerW - bracketLength, centerY + centerH);
-        ctx.lineTo(centerX + centerW, centerY + centerH);
-        ctx.lineTo(centerX + centerW, centerY + centerH - bracketLength);
-        ctx.stroke();
       } else {
-        // Prompt inside center box when face is searching
+        // Simple prompt when face region is searching
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.font = '600 14px "Space Mono", monospace';
+        ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("SEARCHING FACE FOR CENTER CROP...", centerX + centerW / 2, centerY + centerH / 2);
+        ctx.fillText("SEARCHING FACE REGION...", centerX + centerW / 2, centerY + centerH / 2);
       }
 
-      // Title Tag for Center Cropped Face
-      ctx.fillStyle = "#00ff22";
-      ctx.font = '800 11px "Space Mono", monospace';
-      ctx.textAlign = "center";
-      ctx.fillText(`CENTER CANVAS: CROPPED FACE REGION (${Math.round(centerDisplaySize)}px)`, centerX + centerW / 2, centerY - 18);
-
-      ctx.restore();
-
-      // 3. Render LIVE WEBCAM PREVIEW IN BOTTOM-LEFT CORNER
+      // 3. Render CLEAN LIVE WEBCAM PREVIEW IN BOTTOM-LEFT CORNER (NO BORDERS OR COLORS)
       const pipW = 280;
       const pipH = 175;
-      const pipX = 30; // Bottom-Left X
-      const pipY = h - pipH - 30; // Bottom-Left Y
-
-      ctx.save();
-      // Backdrop Frame for Bottom-Left PIP
-      ctx.fillStyle = "#0a0a12";
-      ctx.fillRect(pipX - 4, pipY - 4, pipW + 8, pipH + 8);
+      const pipX = 30;
+      const pipY = h - pipH - 30;
 
       // Draw Mirrored Full Video Feed in Bottom-Left Corner
       ctx.save();
@@ -295,39 +239,12 @@ export const SocialMediaIdentity: React.FC = () => {
       ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, pipW, pipH);
       ctx.restore();
-
-      // Draw Face Bounding Box overlay inside Bottom-Left PIP
-      if (normCrop) {
-        const boxX = pipX + (1 - normCrop.normMaxX) * pipW;
-        const boxY = pipY + normCrop.normMinY * pipH;
-        const boxW = (normCrop.normMaxX - normCrop.normMinX) * pipW;
-        const boxH = (normCrop.normMaxY - normCrop.normMinY) * pipH;
-
-        ctx.strokeStyle = "#00ff22";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(boxX, boxY, boxW, boxH);
-      }
-
-      // Border and Neon Badge for Bottom-Left PIP
-      ctx.strokeStyle = "#00e5ff";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(pipX, pipY, pipW, pipH);
-
-      // Header Tag for Bottom-Left PIP
-      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
-      ctx.fillRect(pipX, pipY, 170, 22);
-      ctx.fillStyle = "#00e5ff";
-      ctx.font = '800 10px "Space Mono", monospace';
-      ctx.textAlign = "left";
-      ctx.fillText("● LIVE WEBCAM PIP (LEFT)", pipX + 10, pipY + 15);
-
-      ctx.restore();
     } else {
-      // Dark Studio Background when camera is inactive
-      ctx.fillStyle = "#00ff22";
-      ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
+      // Prompt when camera is inactive
+      ctx.fillStyle = "#ffffff";
+      ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM FOR CENTER CROPPED FACE & BOTTOM-LEFT PIP", w / 2, h / 2);
+      ctx.fillText("START WEBCAM TO VIEW FACE REGION & LIVE PIP", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -350,7 +267,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Center Face Crop & Bottom-Left PIP</div>
+        <div className={styles.brandSubtitle}>Face Region Viewport</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -390,14 +307,14 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* Center Face Size Adjuster */}
+        {/* Face Region Display Controls */}
         <div className={styles.sectionHeader}>
-          <span>Center Canvas Settings</span>
+          <span>Face Region Settings</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Center Face Display Size</span>
+            <span className={styles.controlLabel}>Face Region Display Size</span>
             <span className={styles.controlValue}>{centerDisplaySize}px</span>
           </div>
           <input
@@ -412,7 +329,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Crop Margin Padding</span>
+            <span className={styles.controlLabel}>Face Region Crop Margin</span>
             <span className={styles.controlValue}>{cropPadding}px</span>
           </div>
           <input
@@ -428,8 +345,8 @@ export const SocialMediaIdentity: React.FC = () => {
         {/* Status Indicator */}
         <div
           style={{
-            background: isCameraActive ? "rgba(0, 255, 34, 0.1)" : "rgba(255, 255, 255, 0.05)",
-            border: isCameraActive ? "1px solid rgba(0, 255, 34, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
+            background: isCameraActive ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "6px",
             padding: "12px",
             fontSize: "12px",
@@ -439,14 +356,14 @@ export const SocialMediaIdentity: React.FC = () => {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>AI Engine Status</span>
-            <span style={{ color: "#00e5ff", fontWeight: 700, fontSize: "11px" }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>AI Model Status</span>
+            <span style={{ color: "#ffffff", fontWeight: 700, fontSize: "11px" }}>
               {modelStatus}
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face AI Tracking</span>
-            <span style={{ color: faceDetected ? "#00ff22" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
+            <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
+            <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
               {faceDetected ? "TRACKED" : "SEARCHING..."}
             </span>
           </div>
@@ -478,7 +395,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Center Cropped Face Portrait + Bottom-Left Live Webcam PIP
+          IMG300 Studio • Pure Clean Face Region Viewport + Live PIP Stream
         </div>
       </div>
     </div>
