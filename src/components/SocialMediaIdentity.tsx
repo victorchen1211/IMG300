@@ -15,11 +15,15 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // Refs for MediaPipe & Live Bounding Box
+  // Face Crop Controls
+  const [centerDisplaySize, setCenterDisplaySize] = useState<number>(320); // Center Face Size (200px ~ 600px)
+  const [cropPadding, setCropPadding] = useState<number>(30); // Crop Padding
+
+  // Refs for MediaPipe & Live Face Crop
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastVideoTimeRef = useRef<number>(-1);
-  const activeBoxRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const rawFaceCropRef = useRef<{ normMinX: number; normMinY: number; normMaxX: number; normMaxY: number } | null>(null);
 
   // Initialize MediaPipe FaceLandmarker Model
   useEffect(() => {
@@ -102,10 +106,10 @@ export const SocialMediaIdentity: React.FC = () => {
     }
     setIsCameraActive(false);
     setFaceDetected(false);
-    activeBoxRef.current = null;
+    rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - Step 1: Real-Time Dynamic Face Tracking Bounding Box
+  // Main Render Loop
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -118,15 +122,35 @@ export const SocialMediaIdentity: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    if (isCameraActive && video && video.readyState >= 2) {
-      // 1. Draw Clean Mirrored Live Webcam Feed
-      ctx.save();
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, w, h);
-      ctx.restore();
+    // Studio Background
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, "#08080e");
+    bgGrad.addColorStop(1, "#12121c");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
 
-      // 2. Perform AI Face Landmark Detection
+    // Background grid accent
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+    ctx.lineWidth = 1;
+    const bgStep = 40;
+    for (let x = 0; x < w; x += bgStep) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += bgStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    if (isCameraActive && video && video.readyState >= 2) {
+      const vW = video.videoWidth || 1280;
+      const vH = video.videoHeight || 720;
+
+      // 1. Perform AI Face Landmark Detection
       if (faceLandmarkerRef.current) {
         try {
           const nowMs = performance.now();
@@ -138,7 +162,6 @@ export const SocialMediaIdentity: React.FC = () => {
               setFaceDetected(true);
               const landmarks = results.faceLandmarks[0];
 
-              // Calculate bounding box across all face landmarks (jaw, eyes, nose, mouth, forehead)
               let minX = 1, maxX = 0, minY = 1, maxY = 0;
               landmarks.forEach((pt) => {
                 if (pt.x < minX) minX = pt.x;
@@ -147,28 +170,14 @@ export const SocialMediaIdentity: React.FC = () => {
                 if (pt.y > maxY) maxY = pt.y;
               });
 
-              const padding = 20;
-              // Mirrored Canvas Calculation
-              const targetX = (1 - maxX) * w - padding;
-              const targetY = minY * h - padding;
-              const targetW = (maxX - minX) * w + padding * 2;
-              const targetH = (maxY - minY) * h + padding * 2;
-
-              // Smooth 60FPS motion tracking interpolation
-              if (!activeBoxRef.current) {
-                activeBoxRef.current = { x: targetX, y: targetY, w: targetW, h: targetH };
-              } else {
-                const lerpSpeed = 0.4;
-                activeBoxRef.current = {
-                  x: activeBoxRef.current.x + (targetX - activeBoxRef.current.x) * lerpSpeed,
-                  y: activeBoxRef.current.y + (targetY - activeBoxRef.current.y) * lerpSpeed,
-                  w: activeBoxRef.current.w + (targetW - activeBoxRef.current.w) * lerpSpeed,
-                  h: activeBoxRef.current.h + (targetH - activeBoxRef.current.h) * lerpSpeed
-                };
-              }
+              rawFaceCropRef.current = {
+                normMinX: minX,
+                normMinY: minY,
+                normMaxX: maxX,
+                normMaxY: maxY
+              };
             } else {
               setFaceDetected(false);
-              activeBoxRef.current = null;
             }
           }
         } catch (e) {
@@ -176,96 +185,153 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 3. Render Real-Time Dynamic Green Bounding Box
-      const currBox = activeBoxRef.current;
-      if (currBox) {
-        const { x: boxX, y: boxY, w: boxW, h: boxH } = currBox;
+      // 2. Render CENTER CANVAS: CROPPED FACE PORTRAIT ONLY
+      const normCrop = rawFaceCropRef.current;
+      const centerW = centerDisplaySize;
+      const centerH = centerDisplaySize * 1.15; // Aspect ratio
+      const centerX = (w - centerW) / 2;
+      const centerY = (h - centerH) / 2;
 
+      ctx.save();
+      // Container Backdrop for Centered Cropped Face
+      ctx.fillStyle = "#0a0a12";
+      ctx.fillRect(centerX - 8, centerY - 8, centerW + 16, centerH + 16);
+      ctx.strokeStyle = "rgba(0, 255, 34, 0.4)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(centerX - 8, centerY - 8, centerW + 16, centerH + 16);
+
+      if (normCrop) {
+        // Calculate Source Video Crop Coordinates with Padding
+        const padX = (cropPadding / w) * (normCrop.normMaxX - normCrop.normMinX);
+        const padY = (cropPadding / h) * (normCrop.normMaxY - normCrop.normMinY);
+
+        const cropMinX = Math.max(0, normCrop.normMinX - padX);
+        const cropMinY = Math.max(0, normCrop.normMinY - padY);
+        const cropMaxX = Math.min(1, normCrop.normMaxX + padX);
+        const cropMaxY = Math.min(1, normCrop.normMaxY + padY);
+
+        const srcX = cropMinX * vW;
+        const srcY = cropMinY * vH;
+        const srcW = (cropMaxX - cropMinX) * vW;
+        const srcH = (cropMaxY - cropMinY) * vH;
+
+        // Draw Mirrored Cropped Face Portrait in Center Canvas
         ctx.save();
-        // Green Bounding Rectangle
-        ctx.strokeStyle = "#00ff22";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(boxX, boxY, boxW, boxH);
-
-        // Cyber Corner Brackets
-        const bracketLength = 25;
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = "#00ff22";
-
-        // Top-Left Corner
         ctx.beginPath();
-        ctx.moveTo(boxX, boxY + bracketLength);
-        ctx.lineTo(boxX, boxY);
-        ctx.lineTo(boxX + bracketLength, boxY);
-        ctx.stroke();
+        ctx.rect(centerX, centerY, centerW, centerH);
+        ctx.clip();
 
-        // Top-Right Corner
-        ctx.beginPath();
-        ctx.moveTo(boxX + boxW - bracketLength, boxY);
-        ctx.lineTo(boxX + boxW, boxY);
-        ctx.lineTo(boxX + boxW, boxY + bracketLength);
-        ctx.stroke();
-
-        // Bottom-Left Corner
-        ctx.beginPath();
-        ctx.moveTo(boxX, boxY + boxH - bracketLength);
-        ctx.lineTo(boxX, boxY + boxH);
-        ctx.lineTo(boxX + bracketLength, boxY + boxH);
-        ctx.stroke();
-
-        // Bottom-Right Corner
-        ctx.beginPath();
-        ctx.moveTo(boxX + boxW - bracketLength, boxY + boxH);
-        ctx.lineTo(boxX + boxW, boxY + boxH);
-        ctx.lineTo(boxX + boxW, boxY + boxH - bracketLength);
-        ctx.stroke();
-
-        // Top Label Tag: FACE DETECTED
-        ctx.fillStyle = "rgba(0, 255, 34, 0.25)";
-        ctx.fillRect(boxX, boxY - 26, 140, 22);
-        ctx.strokeStyle = "#00ff22";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(boxX, boxY - 26, 140, 22);
-
-        ctx.fillStyle = "#00ff22";
-        ctx.font = '800 11px "Space Mono", monospace';
-        ctx.fillText("● FACE DETECTED", boxX + 10, boxY - 10);
-
+        ctx.translate(centerX + centerW, centerY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, centerW, centerH);
         ctx.restore();
+
+        // Cyber Glowing Corner Brackets for Center Cropped Face
+        const bracketLength = 20;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#00ff22";
+
+        // Top-Left
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY + bracketLength);
+        ctx.lineTo(centerX, centerY);
+        ctx.lineTo(centerX + bracketLength, centerY);
+        ctx.stroke();
+
+        // Top-Right
+        ctx.beginPath();
+        ctx.moveTo(centerX + centerW - bracketLength, centerY);
+        ctx.lineTo(centerX + centerW, centerY);
+        ctx.lineTo(centerX + centerW, centerY + bracketLength);
+        ctx.stroke();
+
+        // Bottom-Left
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY + centerH - bracketLength);
+        ctx.lineTo(centerX, centerY + centerH);
+        ctx.lineTo(centerX + bracketLength, centerY + centerH);
+        ctx.stroke();
+
+        // Bottom-Right
+        ctx.beginPath();
+        ctx.moveTo(centerX + centerW - bracketLength, centerY + centerH);
+        ctx.lineTo(centerX + centerW, centerY + centerH);
+        ctx.lineTo(centerX + centerW, centerY + centerH - bracketLength);
+        ctx.stroke();
+      } else {
+        // Prompt inside center box when face is searching
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.font = '600 14px "Space Mono", monospace';
+        ctx.textAlign = "center";
+        ctx.fillText("SEARCHING FACE FOR CENTER CROP...", centerX + centerW / 2, centerY + centerH / 2);
       }
+
+      // Title Tag for Center Cropped Face
+      ctx.fillStyle = "#00ff22";
+      ctx.font = '800 11px "Space Mono", monospace';
+      ctx.textAlign = "center";
+      ctx.fillText(`CENTER CANVAS: CROPPED FACE REGION (${Math.round(centerDisplaySize)}px)`, centerX + centerW / 2, centerY - 18);
+
+      ctx.restore();
+
+      // 3. Render LIVE WEBCAM PREVIEW IN BOTTOM-LEFT CORNER
+      const pipW = 280;
+      const pipH = 175;
+      const pipX = 30; // Bottom-Left X
+      const pipY = h - pipH - 30; // Bottom-Left Y
+
+      ctx.save();
+      // Backdrop Frame for Bottom-Left PIP
+      ctx.fillStyle = "#0a0a12";
+      ctx.fillRect(pipX - 4, pipY - 4, pipW + 8, pipH + 8);
+
+      // Draw Mirrored Full Video Feed in Bottom-Left Corner
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pipX, pipY, pipW, pipH);
+      ctx.clip();
+
+      ctx.translate(pipX + pipW, pipY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, pipW, pipH);
+      ctx.restore();
+
+      // Draw Face Bounding Box overlay inside Bottom-Left PIP
+      if (normCrop) {
+        const boxX = pipX + (1 - normCrop.normMaxX) * pipW;
+        const boxY = pipY + normCrop.normMinY * pipH;
+        const boxW = (normCrop.normMaxX - normCrop.normMinX) * pipW;
+        const boxH = (normCrop.normMaxY - normCrop.normMinY) * pipH;
+
+        ctx.strokeStyle = "#00ff22";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
+      }
+
+      // Border and Neon Badge for Bottom-Left PIP
+      ctx.strokeStyle = "#00e5ff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(pipX, pipY, pipW, pipH);
+
+      // Header Tag for Bottom-Left PIP
+      ctx.fillStyle = "rgba(10, 10, 16, 0.85)";
+      ctx.fillRect(pipX, pipY, 170, 22);
+      ctx.fillStyle = "#00e5ff";
+      ctx.font = '800 10px "Space Mono", monospace';
+      ctx.textAlign = "left";
+      ctx.fillText("● LIVE WEBCAM PIP (LEFT)", pipX + 10, pipY + 15);
+
+      ctx.restore();
     } else {
       // Dark Studio Background when camera is inactive
-      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-      bgGrad.addColorStop(0, "#08080e");
-      bgGrad.addColorStop(1, "#12121c");
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Background grid accent
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
-      ctx.lineWidth = 1;
-      const bgStep = 40;
-      for (let x = 0; x < w; x += bgStep) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
-      }
-      for (let y = 0; y < h; y += bgStep) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
-
       ctx.fillStyle = "#00ff22";
       ctx.font = '700 24px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM FOR STEP 1: DYNAMIC FACE TRACKING BOUNDING BOX", w / 2, h / 2);
+      ctx.fillText("START WEBCAM FOR CENTER CROPPED FACE & BOTTOM-LEFT PIP", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive]);
+  }, [isCameraActive, centerDisplaySize, cropPadding]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -284,7 +350,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Step 1: AI Dynamic Face Tracking</div>
+        <div className={styles.brandSubtitle}>Center Face Crop & Bottom-Left PIP</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -322,6 +388,41 @@ export const SocialMediaIdentity: React.FC = () => {
               {cameraError}
             </div>
           )}
+        </div>
+
+        {/* Center Face Size Adjuster */}
+        <div className={styles.sectionHeader}>
+          <span>Center Canvas Settings</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Center Face Display Size</span>
+            <span className={styles.controlValue}>{centerDisplaySize}px</span>
+          </div>
+          <input
+            type="range"
+            min={200}
+            max={560}
+            step={20}
+            value={centerDisplaySize}
+            onChange={(e) => setCenterDisplaySize(parseInt(e.target.value))}
+          />
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Crop Margin Padding</span>
+            <span className={styles.controlValue}>{cropPadding}px</span>
+          </div>
+          <input
+            type="range"
+            min={10}
+            max={80}
+            step={5}
+            value={cropPadding}
+            onChange={(e) => setCropPadding(parseInt(e.target.value))}
+          />
         </div>
 
         {/* Status Indicator */}
@@ -377,7 +478,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          Step 1: Real-Time Dynamic Face Motion Tracking Bounding Box HUD
+          IMG300 Studio • Center Cropped Face Portrait + Bottom-Left Live Webcam PIP
         </div>
       </div>
     </div>
