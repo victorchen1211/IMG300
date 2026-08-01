@@ -15,10 +15,10 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // 3x3 Face Region Grid Controls
-  const [tileSize, setTileSize] = useState<number>(160); // Square Tile Size (50px ~ 220px)
+  // 1x3 (3 Tiles: 1, 2, 3) Controls
+  const [tileSize, setTileSize] = useState<number>(220); // Square Tile Size (50px ~ 320px)
   const [cropPadding, setCropPadding] = useState<number>(30);
-  const [gridOffset, setGridOffset] = useState<number>(20); // Inward Convergence Offset Percentage
+  const [gridOffset, setGridOffset] = useState<number>(20); // Shift Offset Percentage
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -108,7 +108,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 3x3 Inward Convergence Face Region Grid Matrix (Exact User Trajectory)
+  // Main Render Loop - 3 Horizontally Adjacent Tiles: Tile 1, Tile 2 (Center), Tile 3
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -184,12 +184,11 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render 3x3 SQUARE FACE REGION GRID MATRIX (CONVERGES TOWARDS CENTER STAR ★)
+      // 2. Render 3 HORIZONTALLY ADJACENT SQUARE TILES: 1, 2 (Center), 3
       const normCrop = rawFaceCropRef.current;
       const gridCols = 3;
-      const gridRows = 3;
       const totalGridW = gridCols * tileSize;
-      const totalGridH = gridRows * tileSize;
+      const totalGridH = tileSize;
 
       const gridStartX = (w - totalGridW) / 2;
       const gridStartY = (h - totalGridH) / 2;
@@ -210,69 +209,71 @@ export const SocialMediaIdentity: React.FC = () => {
         const cropWNorm = baseMaxX - baseMinX;
         const cropHNorm = baseMaxY - baseMinY;
 
-        // Render each of the 9 square tiles in the 3x3 matrix
-        for (let r = 0; r < gridRows; r++) {
-          for (let c = 0; c < gridCols; c++) {
-            const tileX = gridStartX + c * tileSize;
-            const tileY = gridStartY + r * tileSize;
+        // Render 3 Square Tiles: Tile 1 (Left), Tile 2 (Center), Tile 3 (Right)
+        for (let c = 0; c < gridCols; c++) {
+          const tileX = gridStartX + c * tileSize;
+          const tileY = gridStartY;
 
-            // Direction toward center star ★ (1,1):
-            // Top-Left (0,0) -> ↘ (Down-Right)
-            // Top-Right (2,0) -> ↙ (Down-Left)
-            // Bottom-Left (0,2) -> ↗ (Up-Right)
-            // Bottom-Right (2,2) -> ↖ (Up-Left)
-            const inwardCol = 1 - c;
-            const inwardRow = 1 - r;
+          // Vector toward center tile 2 (c=1):
+          // Tile 1 (c=0, Left): inwardCol = +1 -> shifts RIGHT (→)
+          // Tile 2 (c=1, Center): inwardCol = 0 -> fixed center
+          // Tile 3 (c=2, Right): inwardCol = -1 -> shifts LEFT (←)
+          const inwardCol = 1 - c;
+          const shiftFraction = (gridOffset / 100);
 
-            const shiftFraction = (gridOffset / 100);
+          let tileMinX = baseMinX - inwardCol * (cropWNorm * shiftFraction);
+          let tileMinY = baseMinY;
+          let tileMaxX = tileMinX + cropWNorm;
+          let tileMaxY = tileMinY + cropHNorm;
 
-            // Subtracting inwardCol / inwardRow produces exact visual trajectory towards center star ★
-            let tileMinX = baseMinX - inwardCol * (cropWNorm * shiftFraction);
-            let tileMinY = baseMinY - inwardRow * (cropHNorm * shiftFraction);
-            let tileMaxX = tileMinX + cropWNorm;
-            let tileMaxY = tileMinY + cropHNorm;
+          // Clamp source video crop bounds
+          if (tileMinX < 0) { tileMinX = 0; tileMaxX = cropWNorm; }
+          if (tileMaxX > 1) { tileMaxX = 1; tileMinX = 1 - cropWNorm; }
+          if (tileMinY < 0) { tileMinY = 0; tileMaxY = cropHNorm; }
+          if (tileMaxY > 1) { tileMaxY = 1; tileMinY = 1 - cropHNorm; }
 
-            // Clamp source video crop bounds
-            if (tileMinX < 0) { tileMinX = 0; tileMaxX = cropWNorm; }
-            if (tileMaxX > 1) { tileMaxX = 1; tileMinX = 1 - cropWNorm; }
-            if (tileMinY < 0) { tileMinY = 0; tileMaxY = cropHNorm; }
-            if (tileMaxY > 1) { tileMaxY = 1; tileMinY = 1 - cropHNorm; }
+          const srcX = tileMinX * vW;
+          const srcY = tileMinY * vH;
+          const srcW = (tileMaxX - tileMinX) * vW;
+          const srcH = (tileMaxY - tileMinY) * vH;
 
-            const srcX = tileMinX * vW;
-            const srcY = tileMinY * vH;
-            const srcW = (tileMaxX - tileMinX) * vW;
-            const srcH = (tileMaxY - tileMinY) * vH;
+          // Draw Square Face Region Crop Tile
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(tileX, tileY, tileSize, tileSize);
+          ctx.clip();
 
-            // Draw Square Face Region Crop Tile
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(tileX, tileY, tileSize, tileSize);
-            ctx.clip();
+          ctx.translate(tileX + tileSize, tileY);
+          ctx.scale(-1, 1);
+          ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, tileSize, tileSize);
+          ctx.restore();
 
-            ctx.translate(tileX + tileSize, tileY);
-            ctx.scale(-1, 1);
-            ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, tileSize, tileSize);
-            ctx.restore();
+          // Seamless subtle border between adjacent tiles
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(tileX, tileY, tileSize, tileSize);
 
-            // Seamless subtle grid border between adjacent 3x3 tiles
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(tileX, tileY, tileSize, tileSize);
-          }
+          // Tile Label Badge (1, 2, 3)
+          ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+          ctx.fillRect(tileX + 6, tileY + 6, 24, 18);
+          ctx.fillStyle = c === 1 ? "#00ff22" : "#ffffff";
+          ctx.font = '800 11px "Space Mono", monospace';
+          ctx.textAlign = "center";
+          ctx.fillText(`${c + 1}`, tileX + 18, tileY + 19);
         }
       } else {
         // Simple prompt when face region is searching
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("SEARCHING FACE REGION FOR 3x3 GRID...", w / 2, h / 2);
+        ctx.fillText("SEARCHING FACE REGION FOR 3 TILES (1, 2, 3)...", w / 2, h / 2);
       }
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW 3x3 FACE REGION GRID", w / 2, h / 2);
+      ctx.fillText("START WEBCAM TO VIEW 3 ADJACENT TILES (1, 2, 3)", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -295,7 +296,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>3x3 Inward Convergence Grid</div>
+        <div className={styles.brandSubtitle}>3 Adjacent Face Tiles (1, 2, 3)</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -335,9 +336,9 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* 3x3 Face Region Controls */}
+        {/* 3 Tiles Controls */}
         <div className={styles.sectionHeader}>
-          <span>3x3 Grid Settings</span>
+          <span>3-Tile Grid Settings</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
@@ -348,7 +349,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <input
             type="range"
             min={50}
-            max={220}
+            max={320}
             step={10}
             value={tileSize}
             onChange={(e) => setTileSize(parseInt(e.target.value))}
@@ -357,7 +358,7 @@ export const SocialMediaIdentity: React.FC = () => {
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Inward Shift (Towards ★)</span>
+            <span className={styles.controlLabel}>Horizontal Shift Offset</span>
             <span className={styles.controlValue}>{gridOffset}%</span>
           </div>
           <input
@@ -407,7 +408,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
             <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED (3x3 INWARD)" : "SEARCHING..."}
+              {faceDetected ? "TRACKED (TILES 1,2,3)" : "SEARCHING..."}
             </span>
           </div>
         </div>
@@ -438,7 +439,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • 3x3 Square Face Region Convergence Matrix (Towards Center Star ★)
+          IMG300 Studio • 3 Horizontally Adjacent Square Face Region Tiles (1, 2, 3)
         </div>
       </div>
     </div>
