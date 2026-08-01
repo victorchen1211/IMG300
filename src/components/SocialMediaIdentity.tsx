@@ -15,12 +15,16 @@ export const SocialMediaIdentity: React.FC = () => {
   const [modelStatus, setModelStatus] = useState<string>("Initializing...");
   const [faceDetected, setFaceDetected] = useState<boolean>(false);
 
-  // 9-Tile 3x3 Matrix Controls (6 4 7 / 1 2 3 / 8 5 9)
-  const [tileSize, setTileSize] = useState<number>(160); // Square Tile Size (50px ~ 220px)
+  // Dynamic N x N Matrix Controls (1x1 ~ 10x10)
+  const [gridDimension, setGridDimension] = useState<number>(10); // N x N (1 to 10, default 10)
+  const [tileSize, setTileSize] = useState<number>(64); // Tile Size
   const [cropPadding, setCropPadding] = useState<number>(30);
 
-  // Fixed 100% Inward Shift Baseline
-  const gridOffset = 100;
+  // Auto-adjust tile size when gridDimension changes
+  useEffect(() => {
+    const recommendedSize = Math.min(220, Math.floor(620 / gridDimension));
+    setTileSize(recommendedSize);
+  }, [gridDimension]);
 
   // Refs for MediaPipe & Live Face Region
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -110,7 +114,7 @@ export const SocialMediaIdentity: React.FC = () => {
     rawFaceCropRef.current = null;
   };
 
-  // Main Render Loop - 9-Tile 3x3 Matrix: (6 4 7 / 1 2 3 / 8 5 9)
+  // Main Render Loop - Dynamic N x N Face Region Inward Matrix
   const renderLoop = useCallback(() => {
     const canvas = canvasRef.current;
     const video = videoRef.current;
@@ -186,29 +190,17 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render FULL 9-TILE 3x3 MATRIX (6 4 7 / 1 2 3 / 8 5 9)
+      // 2. Render DYNAMIC N x N MATRIX (1x1 to 10x10)
       const normCrop = rawFaceCropRef.current;
-      const totalGridW = 3 * tileSize;
-      const totalGridH = 3 * tileSize;
+      const n = gridDimension;
+      const totalGridW = n * tileSize;
+      const totalGridH = n * tileSize;
 
       const gridStartX = (w - totalGridW) / 2;
       const gridStartY = (h - totalGridH) / 2;
 
-      // Define 9 Tile Specifications: (ID, Col, Row)
-      // Top Row:    Tile 6 (c=0, r=0), Tile 4 (c=1, r=0), Tile 7 (c=2, r=0)
-      // Middle Row: Tile 1 (c=0, r=1), Tile 2 (c=1, r=1), Tile 3 (c=2, r=1)
-      // Bottom Row: Tile 8 (c=0, r=2), Tile 5 (c=1, r=2), Tile 9 (c=2, r=2)
-      const tiles = [
-        { id: 6, c: 0, r: 0 },
-        { id: 4, c: 1, r: 0 },
-        { id: 7, c: 2, r: 0 },
-        { id: 1, c: 0, r: 1 },
-        { id: 2, c: 1, r: 1 },
-        { id: 3, c: 2, r: 1 },
-        { id: 8, c: 0, r: 2 },
-        { id: 5, c: 1, r: 2 },
-        { id: 9, c: 2, r: 2 }
-      ];
+      // Center anchor coordinate in grid space: C = (N - 1) / 2
+      const centerCoord = (n - 1) / 2;
 
       if (normCrop) {
         // Base Source Video Crop Coordinates with Padding
@@ -227,77 +219,84 @@ export const SocialMediaIdentity: React.FC = () => {
         const cropHNorm = baseMaxY - baseMinY;
 
         const baseOutwardStep = 0.20;
-        const signedFactor = 1.0; // Fixed 100% Inward Shift Baseline
+        const signedFactor = 1.0; // Inward convergence baseline
 
-        // Render each of the 9 tiles
-        tiles.forEach(({ id, c, r }) => {
-          const tileX = gridStartX + c * tileSize;
-          const tileY = gridStartY + r * tileSize;
+        // Render each of the N x N tiles
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            const tileX = gridStartX + c * tileSize;
+            const tileY = gridStartY + r * tileSize;
 
-          // Inward Convergence Vector Shift toward center Tile 2 (c=1, r=1):
-          const inwardCol = 1 - c;
-          const inwardRow = 1 - r;
+            // Inward Convergence Vector toward grid center (centerCoord, centerCoord):
+            // Normalized distance ratio based on grid dimension N
+            const inwardCol = centerCoord > 0 ? (centerCoord - c) / centerCoord : 0;
+            const inwardRow = centerCoord > 0 ? (centerCoord - r) / centerCoord : 0;
 
-          const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.6);
-          const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.6);
+            const netOffsetCol = -inwardCol * (baseOutwardStep - signedFactor * 0.48);
+            const netOffsetRow = -inwardRow * (baseOutwardStep - signedFactor * 0.48);
 
-          let tileMinX = baseMinX + netOffsetCol * cropWNorm;
-          let tileMinY = baseMinY - netOffsetRow * cropHNorm;
-          let tileMaxX = tileMinX + cropWNorm;
-          let tileMaxY = tileMinY + cropHNorm;
+            let tileMinX = baseMinX + netOffsetCol * cropWNorm;
+            let tileMinY = baseMinY - netOffsetRow * cropHNorm;
+            let tileMaxX = tileMinX + cropWNorm;
+            let tileMaxY = tileMinY + cropHNorm;
 
-          // Clamp source video crop bounds
-          if (tileMinX < 0) { tileMinX = 0; tileMaxX = cropWNorm; }
-          if (tileMaxX > 1) { tileMaxX = 1; tileMinX = 1 - cropWNorm; }
-          if (tileMinY < 0) { tileMinY = 0; tileMaxY = cropHNorm; }
-          if (tileMaxY > 1) { tileMaxY = 1; tileMinY = 1 - cropHNorm; }
+            // Clamp source video crop bounds
+            if (tileMinX < 0) { tileMinX = 0; tileMaxX = cropWNorm; }
+            if (tileMaxX > 1) { tileMaxX = 1; tileMinX = 1 - cropWNorm; }
+            if (tileMinY < 0) { tileMinY = 0; tileMaxY = cropHNorm; }
+            if (tileMaxY > 1) { tileMaxY = 1; tileMinY = 1 - cropHNorm; }
 
-          const srcX = tileMinX * vW;
-          const srcY = tileMinY * vH;
-          const srcW = (tileMaxX - tileMinX) * vW;
-          const srcH = (tileMaxY - tileMinY) * vH;
+            const srcX = tileMinX * vW;
+            const srcY = tileMinY * vH;
+            const srcW = (tileMaxX - tileMinX) * vW;
+            const srcH = (tileMaxY - tileMinY) * vH;
 
-          // Draw Square Face Region Crop Tile
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(tileX, tileY, tileSize, tileSize);
-          ctx.clip();
+            // Draw Square Face Region Crop Tile
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(tileX, tileY, tileSize, tileSize);
+            ctx.clip();
 
-          ctx.translate(tileX + tileSize, tileY);
-          ctx.scale(-1, 1);
-          ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, tileSize, tileSize);
-          ctx.restore();
+            ctx.translate(tileX + tileSize, tileY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, tileSize, tileSize);
+            ctx.restore();
 
-          // Seamless subtle border between adjacent tiles
-          ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(tileX, tileY, tileSize, tileSize);
+            // Seamless subtle border between adjacent tiles
+            ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+            ctx.lineWidth = 1;
+            ctx.strokeRect(tileX, tileY, tileSize, tileSize);
 
-          // Tile Label Badge (1-9)
-          ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-          ctx.fillRect(tileX + 6, tileY + 6, 24, 18);
-          ctx.fillStyle = id === 2 ? "#00ff22" : "#ffffff";
-          ctx.font = '800 11px "Space Mono", monospace';
-          ctx.textAlign = "center";
-          ctx.fillText(`${id}`, tileX + 18, tileY + 19);
-        });
+            // Display tile label badge for small grids (N <= 5)
+            if (n <= 5) {
+              const tileId = r * n + c + 1;
+              const isCenter = Math.abs(c - centerCoord) < 0.5 && Math.abs(r - centerCoord) < 0.5;
+              ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+              ctx.fillRect(tileX + 4, tileY + 4, 22, 16);
+              ctx.fillStyle = isCenter ? "#00ff22" : "#ffffff";
+              ctx.font = '800 10px "Space Mono", monospace';
+              ctx.textAlign = "center";
+              ctx.fillText(`${tileId}`, tileX + 15, tileY + 16);
+            }
+          }
+        }
       } else {
         // Simple prompt when face region is searching
         ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
         ctx.font = '600 13px "Space Mono", monospace';
         ctx.textAlign = "center";
-        ctx.fillText("SEARCHING FACE REGION FOR 9 TILES...", w / 2, h / 2);
+        ctx.fillText(`SEARCHING FACE REGION FOR ${n}x${n} MATRIX...`, w / 2, h / 2);
       }
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW 9-TILE MATRIX (6 4 7 / 1 2 3 / 8 5 9)", w / 2, h / 2);
+      ctx.fillText(`START WEBCAM TO VIEW ${gridDimension}x${gridDimension} FACE MATRIX`, w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [isCameraActive, tileSize, cropPadding]);
+  }, [isCameraActive, gridDimension, tileSize, cropPadding]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -316,7 +315,7 @@ export const SocialMediaIdentity: React.FC = () => {
       {/* Sidebar Tool Panel */}
       <div className={styles.sidebar}>
         <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>9-Tile 3x3 Matrix (6 4 7 / 1 2 3 / 8 5 9)</div>
+        <div className={styles.brandSubtitle}>{gridDimension}x{gridDimension} Face Region Matrix</div>
 
         {/* Camera Control Section */}
         <div className={styles.sectionHeader} style={{ marginTop: 20 }}>
@@ -356,9 +355,25 @@ export const SocialMediaIdentity: React.FC = () => {
           )}
         </div>
 
-        {/* 9 Tiles Controls */}
+        {/* Dynamic N x N Matrix Controls */}
         <div className={styles.sectionHeader}>
-          <span>9-Tile 3x3 Settings</span>
+          <span>Matrix Dimension Settings</span>
+        </div>
+
+        {/* Grid Dimension N x N Slider (1 to 10) */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Grid Matrix Dimension</span>
+            <span className={styles.controlValue}>{gridDimension} x {gridDimension}</span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={10}
+            step={1}
+            value={gridDimension}
+            onChange={(e) => setGridDimension(parseInt(e.target.value))}
+          />
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
@@ -368,9 +383,9 @@ export const SocialMediaIdentity: React.FC = () => {
           </div>
           <input
             type="range"
-            min={50}
-            max={220}
-            step={10}
+            min={20}
+            max={320}
+            step={5}
             value={tileSize}
             onChange={(e) => setTileSize(parseInt(e.target.value))}
           />
@@ -413,7 +428,7 @@ export const SocialMediaIdentity: React.FC = () => {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>Face Region Tracking</span>
             <span style={{ color: faceDetected ? "#ffffff" : "rgba(255, 255, 255, 0.4)", fontWeight: 700 }}>
-              {faceDetected ? "TRACKED (TILES 1-9)" : "SEARCHING..."}
+              {faceDetected ? `TRACKED (${gridDimension}x${gridDimension} = ${gridDimension * gridDimension} TILES)` : "SEARCHING..."}
             </span>
           </div>
         </div>
@@ -444,7 +459,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Clean 9-Tile 3x3 Matrix (6 4 7 / 1 2 3 / 8 5 9)
+          IMG300 Studio • Dynamic {gridDimension}x{gridDimension} Face Region Inward Convergence Matrix ({gridDimension * gridDimension} Tiles)
         </div>
       </div>
     </div>
