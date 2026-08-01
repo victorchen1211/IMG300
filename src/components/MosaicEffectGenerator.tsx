@@ -36,7 +36,10 @@ export const MosaicEffectGenerator: React.FC = () => {
   const [isEffectEnabled, setIsEffectEnabled] = useState<boolean>(true); // Master Effect Switch
   const [selectedEffectMode, setSelectedEffectMode] = useState<"cutout" | "mosaic" | "blur" | "invert">("cutout");
 
-  // 6. Style Sub-Parameters
+  // 6. Cutout Mirror Extension Direction ("none" | "up" | "down" | "left" | "right")
+  const [mirrorDirection, setMirrorDirection] = useState<"none" | "up" | "down" | "left" | "right">("none");
+
+  // 7. Style Sub-Parameters
   const [cutoutBgColor, setCutoutBgColor] = useState<string>("#0a0a0f"); // Cutout Background Color
   const [mosaicBlockSize, setMosaicBlockSize] = useState<number>(14); // Mosaic Resolution (4px ~ 40px)
   const [blurRadius, setBlurRadius] = useState<number>(10); // Blur Radius (4px ~ 24px)
@@ -70,7 +73,7 @@ export const MosaicEffectGenerator: React.FC = () => {
     return { numCols, numRows };
   }, [gridCount]);
 
-  // Render Loop to Draw Base Image, Tile Effects, Selected Borders, and Reference Grid
+  // Render Loop to Draw Base Image, Directional Cutout Mirror Extension, Tile Effects, and Grid Lines
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -111,8 +114,18 @@ export const MosaicEffectGenerator: React.FC = () => {
       const imgH = sourceImage.naturalHeight;
       const imgAspect = imgW / imgH;
 
-      const maxW = w * 0.94;
-      const maxH = h * 0.94;
+      // Determine Panel Dimensions & Multi-Panel Positioning for Mirror Direction Extension
+      const activeMirror = selectedEffectMode === "cutout" ? mirrorDirection : "none";
+      const panelGap = 24;
+
+      let maxW = w * 0.92;
+      let maxH = h * 0.92;
+
+      if (activeMirror === "left" || activeMirror === "right") {
+        maxW = (w * 0.92 - panelGap) / 2;
+      } else if (activeMirror === "up" || activeMirror === "down") {
+        maxH = (h * 0.92 - panelGap) / 2;
+      }
 
       let drawW = maxW;
       let drawH = maxW / imgAspect;
@@ -122,26 +135,65 @@ export const MosaicEffectGenerator: React.FC = () => {
         drawW = maxH * imgAspect;
       }
 
-      const drawX = (w - drawW) / 2;
-      const drawY = (h - drawH) / 2;
+      let frameX = (w - drawW) / 2;
+      let frameY = (h - drawH) / 2;
+      let extX = frameX;
+      let extY = frameY;
 
-      imageBoundsRef.current = { drawX, drawY, drawW, drawH };
+      if (activeMirror === "right") {
+        frameX = (w - (2 * drawW + panelGap)) / 2;
+        extX = frameX + drawW + panelGap;
+        frameY = (h - drawH) / 2;
+        extY = frameY;
+      } else if (activeMirror === "left") {
+        extX = (w - (2 * drawW + panelGap)) / 2;
+        frameX = extX + drawW + panelGap;
+        frameY = (h - drawH) / 2;
+        extY = frameY;
+      } else if (activeMirror === "down") {
+        frameX = (w - drawW) / 2;
+        extX = frameX;
+        frameY = (h - (2 * drawH + panelGap)) / 2;
+        extY = frameY + drawH + panelGap;
+      } else if (activeMirror === "up") {
+        extX = (w - drawW) / 2;
+        frameX = extX;
+        extY = (h - (2 * drawH + panelGap)) / 2;
+        frameY = extY + drawH + panelGap;
+      }
+
+      // Store Main Image Bounding Box for Canvas Click Selection
+      imageBoundsRef.current = { drawX: frameX, drawY: frameY, drawW, drawH };
 
       const { numCols, numRows } = getSquareGridCounts(drawW, drawH);
 
-      // Drop Shadow for Main Canvas Frame
+      // Render Extended Background Panel for Cutout Mirror Extension
+      if (activeMirror !== "none") {
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 10;
+
+        if (cutoutBgColor !== "transparent") {
+          ctx.fillStyle = cutoutBgColor;
+          ctx.fillRect(extX, extY, drawW, drawH);
+        } else {
+          ctx.fillStyle = "#0c0c14";
+          ctx.fillRect(extX, extY, drawW, drawH);
+        }
+        ctx.restore();
+      }
+
+      // Draw Main Frame Base Image
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
       ctx.shadowBlur = 40;
       ctx.shadowOffsetY = 15;
-
-      // Draw Base Image
-      ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
+      ctx.drawImage(sourceImage, frameX, frameY, drawW, drawH);
       ctx.restore();
 
-      // Render Selected Tile Style Effects (Cutout, Mosaic, Blur, Invert)
+      // Render Selected Tile Style Effects & Cutout Cut-and-Paste Mirror Action
       if (isEffectEnabled && selectedTiles.size > 0) {
-        // Border inset geometry is permanently preserved based on borderWidth (Show Reference Grid only toggles line visibility)
         const borderInset = borderWidth > 0 ? borderWidth : 0;
 
         selectedTiles.forEach((tileId) => {
@@ -149,10 +201,10 @@ export const MosaicEffectGenerator: React.FC = () => {
           if (r < numRows && c < numCols) {
             const tileW = drawW / numCols;
             const tileH = drawH / numRows;
-            const tileX = drawX + c * tileW;
-            const tileY = drawY + r * tileH;
 
-            // Effective inner tile bounds completely excluding the border area
+            // Inset coordinates for Main Frame
+            const tileX = frameX + c * tileW;
+            const tileY = frameY + r * tileH;
             const effX = tileX + borderInset;
             const effY = tileY + borderInset;
             const effW = Math.max(1, tileW - 2 * borderInset);
@@ -164,7 +216,7 @@ export const MosaicEffectGenerator: React.FC = () => {
             const srcH = sourceImage.naturalHeight / numRows;
 
             if (selectedEffectMode === "cutout") {
-              // 1. Cutout Mode: Fills inner inset area with background color or transparent
+              // 1. Cutout Mode: Cut out tile from Main Frame (fills with cutoutBgColor)
               ctx.save();
               ctx.clearRect(effX, effY, effW, effH);
 
@@ -173,8 +225,18 @@ export const MosaicEffectGenerator: React.FC = () => {
                 ctx.fillRect(effX, effY, effW, effH);
               }
               ctx.restore();
+
+              // Paste the original cutout image tile into the Extended Background Panel
+              if (activeMirror !== "none") {
+                const extTileX = extX + c * tileW + borderInset;
+                const extTileY = extY + r * tileH + borderInset;
+
+                ctx.save();
+                ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, extTileX, extTileY, effW, effH);
+                ctx.restore();
+              }
             } else if (selectedEffectMode === "mosaic") {
-              // 2. Mosaic Mode: Pixelates inner inset area into configurable block size
+              // 2. Mosaic Mode
               ctx.save();
               const blockSize = Math.max(4, mosaicBlockSize);
               const tempW = Math.max(1, Math.floor(effW / blockSize));
@@ -194,7 +256,7 @@ export const MosaicEffectGenerator: React.FC = () => {
               }
               ctx.restore();
             } else if (selectedEffectMode === "blur") {
-              // 3. Blur Mode inside inner inset bounds
+              // 3. Blur Mode
               ctx.save();
               ctx.beginPath();
               ctx.rect(effX, effY, effW, effH);
@@ -203,7 +265,7 @@ export const MosaicEffectGenerator: React.FC = () => {
               ctx.drawImage(sourceImage, srcX, srcY, srcW, srcH, effX, effY, effW, effH);
               ctx.restore();
             } else if (selectedEffectMode === "invert") {
-              // 4. Invert Mode inside inner inset bounds
+              // 4. Invert Mode
               ctx.save();
               ctx.beginPath();
               ctx.rect(effX, effY, effW, effH);
@@ -216,14 +278,14 @@ export const MosaicEffectGenerator: React.FC = () => {
         });
       }
 
-      // Render Selected Tile Selection Overlay Tint inside inset bounds
+      // Render Selected Tile Selection Tint Overlay on Main Frame
       selectedTiles.forEach((tileId) => {
         const [r, c] = tileId.split(",").map(Number);
         if (r < numRows && c < numCols) {
           const tileW = drawW / numCols;
           const tileH = drawH / numRows;
-          const tileX = drawX + c * tileW;
-          const tileY = drawY + r * tileH;
+          const tileX = frameX + c * tileW;
+          const tileY = frameY + r * tileH;
 
           const borderInset = borderWidth > 0 ? borderWidth : 0;
           const effX = tileX + borderInset;
@@ -238,7 +300,7 @@ export const MosaicEffectGenerator: React.FC = () => {
         }
       });
 
-      // Render Entire Grid Borders / Reference Grid (Only when showReferenceGrid is ON)
+      // Render Grid Borders on Main Frame & Extended Panel (Only when showReferenceGrid is ON)
       if (showReferenceGrid && borderWidth > 0) {
         ctx.save();
         ctx.strokeStyle = "#ffffff";
@@ -247,11 +309,23 @@ export const MosaicEffectGenerator: React.FC = () => {
         const tileW = drawW / numCols;
         const tileH = drawH / numRows;
 
+        // Draw Borders on Main Frame
         for (let r = 0; r < numRows; r++) {
           for (let c = 0; c < numCols; c++) {
-            const tileX = drawX + c * tileW;
-            const tileY = drawY + r * tileH;
+            const tileX = frameX + c * tileW;
+            const tileY = frameY + r * tileH;
             ctx.strokeRect(tileX, tileY, tileW, tileH);
+          }
+        }
+
+        // Draw Borders on Extended Panel if Active
+        if (activeMirror !== "none") {
+          for (let r = 0; r < numRows; r++) {
+            for (let c = 0; c < numCols; c++) {
+              const tileX = extX + c * tileW;
+              const tileY = extY + r * tileH;
+              ctx.strokeRect(tileX, tileY, tileW, tileH);
+            }
           }
         }
         ctx.restore();
@@ -263,7 +337,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN MOSAIC GRID SELECTION", w / 2, h / 2);
     }
-  }, [sourceImage, gridCount, showReferenceGrid, borderWidth, selectedTiles, isEffectEnabled, selectedEffectMode, cutoutBgColor, mosaicBlockSize, blurRadius, getSquareGridCounts]);
+  }, [sourceImage, gridCount, showReferenceGrid, borderWidth, selectedTiles, isEffectEnabled, selectedEffectMode, mirrorDirection, cutoutBgColor, mosaicBlockSize, blurRadius, getSquareGridCounts]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -274,7 +348,7 @@ export const MosaicEffectGenerator: React.FC = () => {
     renderCanvas();
   }, [renderCanvas]);
 
-  // Handle Interactive Canvas Tile Selection
+  // Handle Interactive Canvas Tile Selection on Main Image Frame
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     const bounds = imageBoundsRef.current;
@@ -346,7 +420,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           />
         </div>
 
-        {/* Border Thickness Slider (Directly after Grid Quantity) */}
+        {/* Border Thickness Slider */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
             <span className={styles.controlLabel}>Border Thickness</span>
@@ -380,7 +454,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                 fontSize: "12px",
                 fontWeight: showReferenceGrid ? 800 : 700,
                 background: showReferenceGrid ? "#000000" : "#ffffff",
-                border: showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
+                border: "2px solid #000000",
                 color: showReferenceGrid ? "#ffffff" : "#000000",
                 borderRadius: "6px",
                 cursor: "pointer"
@@ -396,7 +470,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                 fontSize: "12px",
                 fontWeight: !showReferenceGrid ? 800 : 700,
                 background: !showReferenceGrid ? "#000000" : "#ffffff",
-                border: !showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
+                border: "2px solid #000000",
                 color: !showReferenceGrid ? "#ffffff" : "#000000",
                 borderRadius: "6px",
                 cursor: "pointer"
@@ -408,7 +482,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* 4. Style Selection & Sub-Parameters (Clean Text Buttons) */}
+        {/* 4. Style Selection & Sub-Parameters */}
         <div className={styles.sectionHeader}>
           <span>Tile Effect Styles</span>
         </div>
@@ -427,7 +501,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                 fontSize: "12px",
                 fontWeight: isEffectEnabled ? 800 : 700,
                 background: isEffectEnabled ? "#000000" : "#ffffff",
-                border: isEffectEnabled ? "2px solid #000000" : "2px solid #000000",
+                border: "2px solid #000000",
                 color: isEffectEnabled ? "#ffffff" : "#000000",
                 borderRadius: "6px",
                 cursor: "pointer"
@@ -443,7 +517,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                 fontSize: "12px",
                 fontWeight: !isEffectEnabled ? 800 : 700,
                 background: !isEffectEnabled ? "#000000" : "#ffffff",
-                border: !isEffectEnabled ? "2px solid #000000" : "2px solid #000000",
+                border: "2px solid #000000",
                 color: !isEffectEnabled ? "#ffffff" : "#000000",
                 borderRadius: "6px",
                 cursor: "pointer"
@@ -473,7 +547,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                       fontWeight: selectedEffectMode === mode ? 800 : 700,
                       textTransform: "capitalize",
                       background: selectedEffectMode === mode ? "#000000" : "#ffffff",
-                      border: selectedEffectMode === mode ? "2px solid #000000" : "2px solid #000000",
+                      border: "2px solid #000000",
                       color: selectedEffectMode === mode ? "#ffffff" : "#000000",
                       borderRadius: "6px",
                       cursor: "pointer"
@@ -486,55 +560,88 @@ export const MosaicEffectGenerator: React.FC = () => {
               </div>
             </div>
 
-            {/* 5. Sub-Parameters */}
-            {/* Cutout Mode: Background Color Picker */}
+            {/* Sub-Parameters */}
+            {/* Cutout Mode Controls: Background Color & Directional Mirror Extension */}
             {selectedEffectMode === "cutout" && (
-              <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-                <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-                  <span className={styles.controlLabel}>Cutout Background Color</span>
-                  <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
-                    {cutoutBgColor === "transparent" ? "TRANSPARENT" : cutoutBgColor}
-                  </span>
+              <>
+                <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+                    <span className={styles.controlLabel}>Cutout Background Color</span>
+                    <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
+                      {cutoutBgColor === "transparent" ? "TRANSPARENT" : cutoutBgColor}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <input
+                      type="color"
+                      value={cutoutBgColor === "transparent" ? "#0a0a0f" : cutoutBgColor}
+                      onChange={(e) => setCutoutBgColor(e.target.value)}
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        padding: "0",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        background: "transparent"
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+                      {CUTOUT_BG_COLORS.map((color) => (
+                        <button
+                          key={color.name}
+                          onClick={() => setCutoutBgColor(color.value)}
+                          style={{
+                            width: "22px",
+                            height: "22px",
+                            borderRadius: "50%",
+                            backgroundColor: color.value === "transparent" ? "rgba(255,255,255,0.1)" : color.value,
+                            border: cutoutBgColor === color.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
+                            cursor: "pointer",
+                            padding: 0
+                          }}
+                          title={color.name}
+                        >
+                          {color.value === "transparent" && (
+                            <span style={{ fontSize: "10px", color: "#ff3b30", fontWeight: 900, display: "block" }}>✕</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  <input
-                    type="color"
-                    value={cutoutBgColor === "transparent" ? "#0a0a0f" : cutoutBgColor}
-                    onChange={(e) => setCutoutBgColor(e.target.value)}
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      padding: "0",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      background: "transparent"
-                    }}
-                  />
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
-                    {CUTOUT_BG_COLORS.map((color) => (
+
+                {/* Cutout Directional Mirror Extension (Only 1 direction can be active at a time) */}
+                <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+                    <span className={styles.controlLabel}>Cutout Mirror Direction</span>
+                    <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{mirrorDirection}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    {(["none", "up", "down", "left", "right"] as const).map((dir) => (
                       <button
-                        key={color.name}
-                        onClick={() => setCutoutBgColor(color.value)}
+                        key={dir}
                         style={{
-                          width: "22px",
-                          height: "22px",
-                          borderRadius: "50%",
-                          backgroundColor: color.value === "transparent" ? "rgba(255,255,255,0.1)" : color.value,
-                          border: cutoutBgColor === color.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
-                          cursor: "pointer",
-                          padding: 0
+                          flex: 1,
+                          minWidth: "60px",
+                          padding: "8px 4px",
+                          fontSize: "11px",
+                          fontWeight: mirrorDirection === dir ? 800 : 700,
+                          textTransform: "capitalize",
+                          background: mirrorDirection === dir ? "#000000" : "#ffffff",
+                          border: "2px solid #000000",
+                          color: mirrorDirection === dir ? "#ffffff" : "#000000",
+                          borderRadius: "6px",
+                          cursor: "pointer"
                         }}
-                        title={color.name}
+                        onClick={() => setMirrorDirection(dir)}
                       >
-                        {color.value === "transparent" && (
-                          <span style={{ fontSize: "10px", color: "#ff3b30", fontWeight: 900, display: "block" }}>✕</span>
-                        )}
+                        {dir === "none" ? "None" : dir === "up" ? "▲ Up" : dir === "down" ? "▼ Down" : dir === "left" ? "◀ Left" : "▶ Right"}
                       </button>
                     ))}
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Mosaic Mode: Resolution / Block Size Slider */}
