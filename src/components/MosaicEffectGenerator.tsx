@@ -335,11 +335,12 @@ export const MosaicEffectGenerator: React.FC = () => {
           onUploadImage={handleUploadImage}
         />
 
-        {/* 1. Square Grid Dimension */}
+        {/* 1. Square Grid Division & Border Settings */}
         <div className={styles.sectionHeader}>
-          <span>Square Grid Division</span>
+          <span>Square Grid &amp; Border</span>
         </div>
 
+        {/* Square Grid Quantity */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
             <span className={styles.controlLabel}>Square Grid Quantity</span>
@@ -355,58 +356,7 @@ export const MosaicEffectGenerator: React.FC = () => {
           />
         </div>
 
-        {/* 2. Reference Base Grid Overlay Toggle */}
-        <div className={styles.sectionHeader}>
-          <span>Reference Overlay</span>
-        </div>
-
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Show Reference Grid</span>
-            <span className={styles.controlValue}>{showReferenceGrid ? "VISIBLE" : "HIDDEN"}</span>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "12px",
-                fontWeight: showReferenceGrid ? 800 : 700,
-                background: showReferenceGrid ? "#000000" : "#ffffff",
-                border: showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
-                color: showReferenceGrid ? "#ffffff" : "#000000",
-                borderRadius: "6px",
-                cursor: "pointer"
-              }}
-              onClick={() => setShowReferenceGrid(true)}
-            >
-              ✓ Visible
-            </button>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "12px",
-                fontWeight: !showReferenceGrid ? 800 : 700,
-                background: !showReferenceGrid ? "#000000" : "#ffffff",
-                border: !showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
-                color: !showReferenceGrid ? "#ffffff" : "#000000",
-                borderRadius: "6px",
-                cursor: "pointer"
-              }}
-              onClick={() => setShowReferenceGrid(false)}
-            >
-              ✕ Hidden
-            </button>
-          </div>
-        </div>
-
-        {/* 3. Selected Tile Border Size & Color (Default White, Includes Transparent) */}
-        <div className={styles.sectionHeader}>
-          <span>Selected Tile Border</span>
-        </div>
-
-        {/* Border Thickness Slider */}
+        {/* Border Thickness Slider (Directly after Grid Quantity) */}
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader}>
             <span className={styles.controlLabel}>Border Thickness</span>
@@ -475,6 +425,52 @@ export const MosaicEffectGenerator: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* 2. Reference Base Grid Overlay Toggle */}
+        <div className={styles.sectionHeader}>
+          <span>Reference Overlay</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Show Reference Grid</span>
+            <span className={styles.controlValue}>{showReferenceGrid ? "VISIBLE" : "HIDDEN"}</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: showReferenceGrid ? 800 : 700,
+                background: showReferenceGrid ? "#000000" : "#ffffff",
+                border: showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
+                color: showReferenceGrid ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
+              }}
+              onClick={() => setShowReferenceGrid(true)}
+            >
+              ✓ Visible
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: !showReferenceGrid ? 800 : 700,
+                background: !showReferenceGrid ? "#000000" : "#ffffff",
+                border: !showReferenceGrid ? "2px solid #000000" : "2px solid #000000",
+                color: !showReferenceGrid ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
+              }}
+              onClick={() => setShowReferenceGrid(false)}
+            >
+              ✕ Hidden
+            </button>
+          </div>
+        </div>
 
         {/* 4. Style Selection & Sub-Parameters (Clean Text Buttons) */}
         <div className={styles.sectionHeader}>
