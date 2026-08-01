@@ -26,6 +26,16 @@ const CARDS: CardData[] = [
     shares: 6
   },
   {
+    id: "mosaic-effect",
+    title: "Mosaic Effect",
+    author: "Created By Victor Chen",
+    href: "/mosaic-effect",
+    image: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=600&q=80",
+    likes: 14,
+    remixes: 310,
+    shares: 19
+  },
+  {
     id: "halftone-matrix",
     title: "Halftone Matrix",
     author: "Created By Victor Chen",
