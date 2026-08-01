@@ -31,22 +31,18 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
   const imageList = card.images && card.images.length > 0 ? card.images : [card.image];
   const totalImages = imageList.length;
 
-  // Auto rotate carousel every 2.8 seconds when hovered or playing
+  // Continuous Automatic Auto-Play Carousel (Rotates every 3 seconds automatically!)
   useEffect(() => {
     if (totalImages <= 1) return;
 
-    if (isHovered) {
-      timerRef.current = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % totalImages);
-      }, 2400);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
+    timerRef.current = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % totalImages);
+    }, 3000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isHovered, totalImages]);
+  }, [totalImages]);
 
   const handlePrev = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,10 +66,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
     <div
       className={styles.cardItem}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setCurrentIndex(0);
-      }}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className={styles.cardThumbnailWrapper}>
         {/* Render Carousel Slides with Cross-Fade */}
@@ -87,7 +80,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
               width: "100%",
               height: "100%",
               opacity: idx === currentIndex ? 1 : 0,
-              transition: "opacity 0.4s ease-in-out",
+              transition: "opacity 0.6s ease-in-out",
               pointerEvents: idx === currentIndex ? "auto" : "none"
             }}
           >
@@ -104,7 +97,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
 
         {card.isUpcoming && <span className={styles.cardBadge}>Upcoming</span>}
 
-        {/* Carousel Navigation Arrows (On Hover) */}
+        {/* Carousel Navigation Arrows & Dots Indicator */}
         {totalImages > 1 && (
           <>
             <button
