@@ -183,7 +183,7 @@ export const SocialMediaIdentity: React.FC = () => {
         }
       }
 
-      // 2. Render CENTER CANVAS: PURE CLEAN CROPPED FACE REGION ONLY (NO BORDERS OR COLORS)
+      // 2. Render CENTER CANVAS ONLY: PURE CLEAN CROPPED FACE REGION
       const normCrop = rawFaceCropRef.current;
       const centerW = centerDisplaySize;
       const centerH = centerDisplaySize * 1.15;
@@ -205,7 +205,7 @@ export const SocialMediaIdentity: React.FC = () => {
         const srcW = (cropMaxX - cropMinX) * vW;
         const srcH = (cropMaxY - cropMinY) * vH;
 
-        // Draw Pure Mirrored Face Region Crop in Center (No Colored Borders or Lines)
+        // Draw Pure Mirrored Face Region Crop in Center Canvas
         ctx.save();
         ctx.beginPath();
         ctx.rect(centerX, centerY, centerW, centerH);
@@ -222,29 +222,12 @@ export const SocialMediaIdentity: React.FC = () => {
         ctx.textAlign = "center";
         ctx.fillText("SEARCHING FACE REGION...", centerX + centerW / 2, centerY + centerH / 2);
       }
-
-      // 3. Render CLEAN LIVE WEBCAM PREVIEW IN BOTTOM-LEFT CORNER (NO BORDERS OR COLORS)
-      const pipW = 280;
-      const pipH = 175;
-      const pipX = 30;
-      const pipY = h - pipH - 30;
-
-      // Draw Mirrored Full Video Feed in Bottom-Left Corner
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(pipX, pipY, pipW, pipH);
-      ctx.clip();
-
-      ctx.translate(pipX + pipW, pipY);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, pipW, pipH);
-      ctx.restore();
     } else {
       // Prompt when camera is inactive
       ctx.fillStyle = "#ffffff";
       ctx.font = '700 22px "Telegraf", system-ui, sans-serif';
       ctx.textAlign = "center";
-      ctx.fillText("START WEBCAM TO VIEW FACE REGION & LIVE PIP", w / 2, h / 2);
+      ctx.fillText("START WEBCAM TO VIEW FACE REGION", w / 2, h / 2);
     }
 
     animationFrameRef.current = requestAnimationFrame(renderLoop);
@@ -395,7 +378,7 @@ export const SocialMediaIdentity: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Pure Clean Face Region Viewport + Live PIP Stream
+          IMG300 Studio • Pure Face Region Viewport
         </div>
       </div>
     </div>
