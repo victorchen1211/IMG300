@@ -79,7 +79,7 @@ const CARDS: CardData[] = [
 
 export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const [deviceType, setDeviceType] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [activeCategory, setActiveCategory] = useState("All");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -91,7 +91,14 @@ export default function Home() {
     };
 
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 1024);
+      const w = window.innerWidth;
+      if (w <= 640) {
+        setDeviceType("mobile");
+      } else if (w <= 1024) {
+        setDeviceType("tablet");
+      } else {
+        setDeviceType("desktop");
+      }
     };
 
     handleResize();
@@ -111,9 +118,22 @@ export default function Home() {
     return activeCategory === "All" || card.category === activeCategory;
   });
 
-  const scale = isMobile ? 1 - scrollProgress * 0.72 : 1 - scrollProgress * 0.81;
-  const topPos = isMobile ? Math.max(10, 20 - scrollProgress * 10) : Math.max(14, 28 - scrollProgress * 14);
-  const leftPos = isMobile ? Math.max(16, 16 - scrollProgress * 0) : Math.max(48, 48 - scrollProgress * 0);
+  // Calculate dynamic scale factor based on viewport device version (Desktop vs Tablet vs Mobile)
+  let scale = 1 - scrollProgress * 0.81;
+  let topPos = Math.max(14, 28 - scrollProgress * 14);
+  let leftPos = Math.max(48, 48 - scrollProgress * 0);
+
+  if (deviceType === "tablet") {
+    scale = 1 - scrollProgress * 0.73;
+    topPos = Math.max(12, 22 - scrollProgress * 10);
+    leftPos = Math.max(24, 24 - scrollProgress * 0);
+  } else if (deviceType === "mobile") {
+    scale = 1 - scrollProgress * 0.65;
+    topPos = Math.max(10, 18 - scrollProgress * 8);
+    leftPos = Math.max(16, 16 - scrollProgress * 0);
+  }
+
+  const isMobileOrTablet = deviceType !== "desktop";
 
   return (
     <div className={styles.visuHomeRoot}>
@@ -136,7 +156,7 @@ export default function Home() {
       <header className={`${styles.visuTopBar} ${scrollProgress > 0.4 ? styles.scrolledTopBar : ""}`}>
         {/* Floating White Pill Menu Dock */}
         <div className={styles.visuFloatingPillDock}>
-          {!isMobile ? (
+          {!isMobileOrTablet ? (
             <nav className={styles.visuPrimaryNavInline}>
               <button className={styles.visuNavItemLink}>Create</button>
               <button className={styles.visuNavItemLink}>Gallery</button>
@@ -157,8 +177,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Full-Screen Red Mobile Navigation Menu (Matching Screenshot) */}
-      {isMobile && isMobileMenuOpen && (
+      {/* Full-Screen Electric Blue Mobile/Tablet Navigation Menu */}
+      {isMobileOrTablet && isMobileMenuOpen && (
         <div className={styles.fullScreenRedMenu}>
           {/* Top Right Close Button Pill */}
           <button
@@ -215,13 +235,13 @@ export default function Home() {
         </div>
 
         {/* Visu.Haus Masonry Gallery Grid */}
-        <section className={styles.visuGridSection}>
+        {/* <section className={styles.visuGridSection}>
           <div className={styles.visuGrid}>
             {filteredCards.map((card) => (
               <GalleryCard key={card.id} card={card} />
             ))}
           </div>
-        </section>
+        </section> */}
       </main>
     </div>
   );
