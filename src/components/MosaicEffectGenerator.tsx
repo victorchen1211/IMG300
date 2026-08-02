@@ -36,8 +36,8 @@ export const MosaicEffectGenerator: React.FC = () => {
   const [isEffectEnabled, setIsEffectEnabled] = useState<boolean>(true); // Master Effect Switch
   const [selectedEffectMode, setSelectedEffectMode] = useState<"cutout" | "mosaic" | "blur" | "invert">("cutout");
 
-  // 6. Cutout Mirror Extension Direction ("none" | "up" | "down" | "left" | "right")
-  const [mirrorDirection, setMirrorDirection] = useState<"none" | "up" | "down" | "left" | "right">("none");
+  // 6. Cutout Mirror Extension Direction ("none" | "left" | "right")
+  const [mirrorDirection, setMirrorDirection] = useState<"none" | "left" | "right">("none");
 
   // 7. Style Sub-Parameters
   const [cutoutBgColor, setCutoutBgColor] = useState<string>("#0a0a0f"); // Cutout Background Color
@@ -235,11 +235,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       let mirrorStartX = drawX;
       let mirrorStartY = drawY;
 
-      if (mirrorDirection === "up") {
-        mirrorStartY = drawY - drawH;
-      } else if (mirrorDirection === "down") {
-        mirrorStartY = drawY + drawH;
-      } else if (mirrorDirection === "left") {
+      if (mirrorDirection === "left") {
         mirrorStartX = drawX - drawW;
       } else if (mirrorDirection === "right") {
         mirrorStartX = drawX + drawW;
@@ -271,13 +267,7 @@ export const MosaicEffectGenerator: React.FC = () => {
             let scaleX = 1;
             let scaleY = 1;
 
-            if (mirrorDirection === "up") {
-              targetTileY = drawY - drawH + (numRows - 1 - r) * tileH_Canvas;
-              scaleY = -1;
-            } else if (mirrorDirection === "down") {
-              targetTileY = drawY + drawH + (numRows - 1 - r) * tileH_Canvas;
-              scaleY = -1;
-            } else if (mirrorDirection === "left") {
+            if (mirrorDirection === "left") {
               targetTileX = drawX - drawW + (numCols - 1 - c) * tileW_Canvas;
               scaleX = -1;
             } else if (mirrorDirection === "right") {
@@ -652,8 +642,8 @@ export const MosaicEffectGenerator: React.FC = () => {
                     {mirrorDirection}
                   </span>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "4px" }}>
-                  {(["none", "up", "down", "left", "right"] as const).map((dir) => (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
+                  {(["none", "left", "right"] as const).map((dir) => (
                     <button
                       key={dir}
                       style={{
