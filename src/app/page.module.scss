@@ -271,6 +271,7 @@
     opacity: 0;
     transform: scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -403,13 +404,13 @@
   }
 
   .heroSubtitleContainer {
-    max-width: 300px;
+    max-width: 350px;
     text-align: right;
     padding-bottom: 24px;
   }
 
   .heroTaglineText {
-    font-size: 22px;
+    font-size: 26px;
     font-weight: 800;
     color: #111111;
     line-height: 1.35;
@@ -442,13 +443,13 @@
   }
 
   .heroSubtitleContainer {
-    max-width: 260px;
+    max-width: 300px;
     text-align: right;
     padding-bottom: 12px;
   }
 
   .heroTaglineText {
-    font-size: 18px;
+    font-size: 24px;
     font-weight: 800;
     color: #111111;
     line-height: 1.35;
@@ -503,7 +504,7 @@
 
 @media (max-width: 640px) {
   .stackedLogoText {
-    font-size: clamp(48px, 12vw, 72px);
+    font-size: clamp(56px, 14vw, 80px);
   }
 
   .visuHeroHeader {
@@ -526,7 +527,7 @@
   }
 
   .heroTaglineText {
-    font-size: 15px;
+    font-size: 18px;
     font-weight: 700;
     color: #111111;
     line-height: 1.35;

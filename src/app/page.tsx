@@ -124,11 +124,11 @@ export default function Home() {
   let leftPos = Math.max(48, 48 - scrollProgress * 0);
 
   if (deviceType === "tablet") {
-    scale = 1 - scrollProgress * 0.73;
+    scale = 1 - scrollProgress * 0.58;
     topPos = Math.max(12, 22 - scrollProgress * 10);
     leftPos = Math.max(24, 24 - scrollProgress * 0);
   } else if (deviceType === "mobile") {
-    scale = 1 - scrollProgress * 0.65;
+    scale = 1 - scrollProgress * 0.48;
     topPos = Math.max(10, 18 - scrollProgress * 8);
     leftPos = Math.max(16, 16 - scrollProgress * 0);
   }
