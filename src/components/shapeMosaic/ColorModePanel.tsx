@@ -25,36 +25,22 @@ export const ColorModePanel: React.FC<ColorModePanelProps> = ({
 }) => {
   return (
     <AccordionSection title="Shape Color & Tint" defaultOpen={true}>
-      {/* Color Mode Selection */}
+      {/* Color Mode Dropdown */}
       <div className={styles.controlGroup} style={{ marginBottom: 14 }}>
         <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-          <span className={styles.controlLabel}>Color Mode</span>
+          <span className={styles.controlLabel}>Color Mode (Dropdown Menu)</span>
           <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
             {colorMode}
           </span>
         </div>
-        <div style={{ display: "flex", gap: "6px" }}>
-          {(["original", "solid", "tint"] as const).map((mode) => (
-            <button
-              key={mode}
-              style={{
-                flex: 1,
-                padding: "8px 4px",
-                fontSize: "11px",
-                fontWeight: colorMode === mode ? 800 : 700,
-                textTransform: "capitalize",
-                background: colorMode === mode ? "#000000" : "#ffffff",
-                border: "2px solid #000000",
-                color: colorMode === mode ? "#ffffff" : "#000000",
-                borderRadius: "6px",
-                cursor: "pointer"
-              }}
-              onClick={() => onSelectColorMode(mode)}
-            >
-              {mode === "original" ? "Original" : mode === "solid" ? "Solid" : "Tint Blend"}
-            </button>
-          ))}
-        </div>
+        <select
+          value={colorMode}
+          onChange={(e) => onSelectColorMode(e.target.value as ColorMode)}
+        >
+          <option value="original">Original Image Color</option>
+          <option value="solid">Solid Color Override</option>
+          <option value="tint">Tint Blend Ratio</option>
+        </select>
       </div>
 
       {/* Custom Color Picker & Presets */}
