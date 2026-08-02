@@ -79,6 +79,7 @@ const CARDS: CardData[] = [
 
 export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -91,9 +92,19 @@ export default function Home() {
       setScrollProgress(progress);
     };
 
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 1024);
+    };
+
+    handleResize();
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleResize);
     handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
+    };
   }, []);
 
   const categories = ["All", "Grid & Cutout Matrix", "Typography Geometry", "Generative Shaders", "Orthographic WebGL"];
@@ -105,8 +116,10 @@ export default function Home() {
     return matchesCategory && matchesSearch;
   });
 
-  // Calculate dynamic scale factor from 1.0 (giant) to 0.18 (sticky header logo size)
-  const scale = 1 - scrollProgress * 0.81;
+  // Calculate dynamic scale factor based on viewport version (Desktop vs Mobile)
+  const scale = isMobile ? 1 - scrollProgress * 0.72 : 1 - scrollProgress * 0.81;
+  const topPos = isMobile ? Math.max(10, 20 - scrollProgress * 10) : Math.max(14, 28 - scrollProgress * 14);
+  const leftPos = isMobile ? Math.max(16, 16 - scrollProgress * 0) : Math.max(48, 48 - scrollProgress * 0);
 
   return (
     <div className={styles.visuHomeRoot}>
@@ -115,8 +128,8 @@ export default function Home() {
         className={styles.dynamicStackedLogoContainer}
         style={{
           transform: `scale(${scale})`,
-          top: `${Math.max(12, 28 - scrollProgress * 14)}px`,
-          left: `${Math.max(16, 40 - scrollProgress * 24)}px`
+          top: `${topPos}px`,
+          left: `${leftPos}px`
         }}
       >
         <div className={styles.stackedLogoText}>

@@ -201,7 +201,7 @@
 }
 
 /* ==========================================================================
-   VISU.HAUS HOMEPAGE WITH CONTINUOUS SCROLL TRANSFORMING LOGO (#0000fe)
+   HOMEPAGE DESIGN SYSTEM: 2 DISTINCT STYLE VERSIONS (DESKTOP & MOBILE)
    ========================================================================== */
 
 .visuHomeRoot {
@@ -215,7 +215,7 @@
   position: relative;
 }
 
-/* Dynamic Morphing Logo pinned fixed on top-left */
+/* Dynamic Morphing Logo fixed container */
 .dynamicStackedLogoContainer {
   position: fixed;
   z-index: 1001;
@@ -236,95 +236,222 @@
   text-transform: uppercase;
 }
 
-.visuTopBar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 1000;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 40px;
-  background: transparent;
-  pointer-events: none;
-  transition: background 0.3s ease, border-color 0.3s ease;
-
-  &.scrolledTopBar {
-    background: rgba(243, 244, 246, 0.92);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid #e5e7eb;
-    padding: 12px 40px;
-  }
-
-  @media (max-width: 768px) {
-    padding: 12px 16px;
+/* ==========================================================================
+   VERSION 1: DESKTOP STYLE SYSTEM (> 1024px)
+   ========================================================================== */
+@media (min-width: 1025px) {
+  .visuTopBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 48px;
+    background: transparent;
+    pointer-events: none;
+    transition: background 0.3s ease, border-color 0.3s ease, padding 0.3s ease;
 
     &.scrolledTopBar {
+      background: rgba(243, 244, 246, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid #e5e7eb;
+      padding: 14px 48px;
+    }
+  }
+
+  .visuFloatingPillDock {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: #ffffff;
+    padding: 10px 28px;
+    border-radius: 9999px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    margin-left: auto;
+  }
+
+  .visuPrimaryNavInline {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .visuNavItemLink {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111111;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #0000fe;
+    }
+  }
+
+  .visuSearchIconBtn {
+    background: transparent;
+    border: none;
+    color: #111111;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #0000fe;
+    }
+  }
+
+  .visuMainContent {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 60px 48px 100px;
+  }
+
+  .visuHeroHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 56px;
+    min-height: 280px;
+  }
+
+  .heroLogoSpacer {
+    width: 440px;
+    height: 240px;
+    flex-shrink: 0;
+  }
+
+  .heroSubtitleContainer {
+    max-width: 360px;
+    text-align: right;
+    padding-bottom: 12px;
+  }
+
+  .heroTaglineText {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111111;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+}
+
+/* ==========================================================================
+   VERSION 2: MOBILE & TABLET STYLE SYSTEM (<= 1024px)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .visuTopBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: transparent;
+    pointer-events: none;
+    transition: background 0.3s ease, border-color 0.3s ease;
+
+    &.scrolledTopBar {
+      background: rgba(243, 244, 246, 0.95);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid #e5e7eb;
       padding: 10px 16px;
     }
   }
-}
 
-.visuFloatingPillDock {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: #ffffff;
-  padding: 8px 24px;
-  border-radius: 9999px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  margin-left: auto;
+  .stackedLogoText {
+    font-size: clamp(75px, 14vw, 120px);
+  }
 
-  @media (max-width: 600px) {
+  .visuFloatingPillDock {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffffff;
     padding: 6px 16px;
+    border-radius: 9999px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    margin-left: auto;
+  }
+
+  .visuPrimaryNavInline {
+    display: flex;
+    align-items: center;
     gap: 10px;
   }
-}
 
-.visuPrimaryNavInline {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  .visuNavItemLink {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111111;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
 
-  @media (max-width: 600px) {
-    gap: 10px;
+  .visuSearchIconBtn {
+    background: transparent;
+    border: none;
+    color: #111111;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+  }
+
+  .visuMainContent {
+    max-width: 100%;
+    padding: 20px 16px 60px;
+  }
+
+  .visuHeroHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 36px;
+    min-height: auto;
+  }
+
+  .heroLogoSpacer {
+    width: 100%;
+    height: 120px;
+  }
+
+  .heroSubtitleContainer {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .heroTaglineText {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111111;
+    line-height: 1.35;
+    margin: 0;
   }
 }
 
-.visuNavItemLink {
-  font-size: 14px;
-  font-weight: 600;
-  color: #111111;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px 6px;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: #0000fe;
-  }
-}
-
-.visuSearchIconBtn {
-  background: transparent;
-  border: none;
-  color: #111111;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: #0000fe;
-  }
-}
-
+/* Common Elements: Search Bar, Category Filter Pills & Masonry Card Grid */
 .visuSearchExpandBar {
   margin-bottom: 24px;
 }
@@ -338,62 +465,6 @@
   background: #ffffff;
   outline: none;
   box-sizing: border-box;
-}
-
-.visuMainContent {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 40px 40px 100px;
-
-  @media (max-width: 768px) {
-    padding: 20px 16px 60px;
-  }
-}
-
-.visuHeroHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 48px;
-  min-height: 280px;
-
-  @media (max-width: 850px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 24px;
-    min-height: auto;
-  }
-}
-
-.heroLogoSpacer {
-  width: 400px;
-  height: 220px;
-  flex-shrink: 0;
-
-  @media (max-width: 850px) {
-    width: 100%;
-    height: 140px;
-  }
-}
-
-.heroSubtitleContainer {
-  max-width: 320px;
-  text-align: right;
-  padding-bottom: 12px;
-
-  @media (max-width: 850px) {
-    text-align: left;
-    max-width: 100%;
-  }
-}
-
-.heroTaglineText {
-  font-size: 18px;
-  font-weight: 600;
-  color: #111111;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-  margin: 0;
 }
 
 .visuFilterBar {
