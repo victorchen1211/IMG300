@@ -4,3 +4,6 @@ export { ExportControls } from "./ExportControls";
 export { CanvasSizeSelector } from "./CanvasSizeSelector";
 export { TypographyControl } from "./TypographyControl";
 export type { TextLayer, TextAlignMode } from "./TypographyControl";
+export { RangeSliderControl } from "./RangeSliderControl";
+export { ColorPickerControl, DEFAULT_PRESET_COLORS } from "./ColorPickerControl";
+export type { ColorPreset } from "./ColorPickerControl";

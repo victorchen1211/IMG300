@@ -2,46 +2,18 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
-import { ImageUploader, ExportControls } from "./common";
-
-type ShapeType = "circle" | "ring" | "square" | "triangle" | "cross" | "x_cross" | "diamond" | "hexagon" | "star";
-type ColorMode = "original" | "solid" | "tint";
-
-const SHAPE_OPTIONS: { id: ShapeType; label: string }[] = [
-  { id: "circle", label: "Circle" },
-  { id: "ring", label: "Ring" },
-  { id: "square", label: "Square" },
-  { id: "triangle", label: "Triangle" },
-  { id: "cross", label: "Cross (+)" },
-  { id: "x_cross", label: "X-Cross (✕)" },
-  { id: "diamond", label: "Diamond" },
-  { id: "hexagon", label: "Hexagon" },
-  { id: "star", label: "Star" }
-];
-
-const PRESET_COLORS = [
-  { name: "Pure White", value: "#ffffff" },
-  { name: "Cyber Cyan", value: "#00e5ff" },
-  { name: "Neon Pink", value: "#ff007f" },
-  { name: "Electric Yellow", value: "#ffea00" },
-  { name: "Neon Green", value: "#00ff66" },
-  { name: "Sunset Orange", value: "#ff5500" },
-  { name: "Pure Black", value: "#000000" }
-];
-
-// Helper to parse hex color to RGB
-const hexToRgb = (hex: string) => {
-  let cleanHex = hex.replace("#", "");
-  if (cleanHex.length === 3) {
-    cleanHex = cleanHex.split("").map((c) => c + c).join("");
-  }
-  const num = parseInt(cleanHex, 16);
-  return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
-    b: num & 255
-  };
-};
+import { ImageUploader, ExportControls, RangeSliderControl } from "./common";
+import {
+  ShapeType,
+  ColorMode,
+  ShapeSelectorPanel,
+  ColorModePanel,
+  drawShapePath,
+  buildSVGShapeElement
+} from "./shapeMosaic";
+import { hexToRgb, blendRgb } from "../utils/colorUtils";
+import { isBackgroundPixel } from "../utils/bgFilterUtils";
+import { exportCanvasToPNG, exportSVGString } from "../utils/exportUtils";
 
 export const ShapeMosaicGenerator: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -71,7 +43,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
   // Smart Checkerboard Background Cutout Filter Sensitivity
   const [bgThreshold, setBgThreshold] = useState<number>(170); // Threshold for neutral grey/white checkerboard removal
 
-  // Load default sample background image & transparent PNG cutout subject on mount
+  // Load default sample background image & IMG300 typography cutout subject on mount
   useEffect(() => {
     // Default Main Background Image
     const bgImg = new Image();
@@ -110,12 +82,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
   // Export PNG Handler
   const handleExportPNG = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `shape-mosaic-composition-${selectedShape}-${Date.now()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    exportCanvasToPNG(canvasRef.current, `shape-mosaic-composition-${selectedShape}`);
   };
 
   // Export SVG Handler
@@ -158,10 +125,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
     const stepX = Math.max(2, (tileSize + gapX) * subjectScale);
     const stepY = Math.max(2, (tileSize + gapY) * subjectScale);
     const effectiveShapeSize = baseStep * shapeScale;
-    const r = effectiveShapeSize / 2;
 
     let svgElements = "";
-    const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
+    const tintRgb = hexToRgb(customColor);
 
     for (let y = 0; y < finalH; y += stepY) {
       for (let x = 0; x < finalW; x += stepX) {
@@ -174,12 +140,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
         const bVal = imgData[idx + 2];
         const aVal = imgData[idx + 3];
 
-        const isTransparent = aVal < 30;
-        const isMonochrome = Math.abs(rVal - gVal) < 18 && Math.abs(gVal - bVal) < 18 && Math.abs(rVal - bVal) < 18;
-        const avgBrightness = (rVal + gVal + bVal) / 3;
-        const isCheckerboard = isMonochrome && avgBrightness >= bgThreshold;
-
-        if (isTransparent || isCheckerboard) continue;
+        if (isBackgroundPixel({ r: rVal, g: gVal, b: bVal, a: aVal }, bgThreshold)) {
+          continue;
+        }
 
         const cx = finalX + x + stepX / 2;
         const cy = finalY + y + stepY / 2;
@@ -188,110 +151,16 @@ export const ShapeMosaicGenerator: React.FC = () => {
         if (colorMode === "solid") {
           fill = customColor;
         } else if (colorMode === "tint") {
-          const finalR = Math.round(rVal * (1 - tintRatio) + tr * tintRatio);
-          const finalG = Math.round(gVal * (1 - tintRatio) + tg * tintRatio);
-          const finalB = Math.round(bVal * (1 - tintRatio) + tb * tintRatio);
-          fill = `rgb(${finalR},${finalG},${finalB})`;
+          const blended = blendRgb({ r: rVal, g: gVal, b: bVal }, tintRgb, tintRatio);
+          fill = `rgb(${blended.r},${blended.g},${blended.b})`;
         }
 
-        if (selectedShape === "circle") {
-          svgElements += `  <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" />\n`;
-        } else if (selectedShape === "ring") {
-          svgElements += `  <path d="M ${cx.toFixed(1)} ${(cy - r).toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${cx.toFixed(1)} ${(cy + r).toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${cx.toFixed(1)} ${(cy - r).toFixed(1)} Z M ${cx.toFixed(1)} ${(cy - r * 0.45).toFixed(1)} A ${(r * 0.45).toFixed(1)} ${(r * 0.45).toFixed(1)} 0 1 1 ${cx.toFixed(1)} ${(cy + r * 0.45).toFixed(1)} A ${(r * 0.45).toFixed(1)} ${(r * 0.45).toFixed(1)} 0 1 1 ${cx.toFixed(1)} ${(cy - r * 0.45).toFixed(1)} Z" fill="${fill}" fill-rule="evenodd" />\n`;
-        } else if (selectedShape === "square") {
-          svgElements += `  <rect x="${(cx - r).toFixed(1)}" y="${(cy - r).toFixed(1)}" width="${effectiveShapeSize.toFixed(1)}" height="${effectiveShapeSize.toFixed(1)}" fill="${fill}" />\n`;
-        } else if (selectedShape === "cross") {
-          const arm = Math.max(1.5, effectiveShapeSize / 5.5);
-          const halfArm = arm / 2;
-          svgElements += `  <g fill="${fill}"><rect x="${(cx - halfArm).toFixed(1)}" y="${(cy - r).toFixed(1)}" width="${arm.toFixed(1)}" height="${effectiveShapeSize.toFixed(1)}" /><rect x="${(cx - r).toFixed(1)}" y="${(cy - halfArm).toFixed(1)}" width="${effectiveShapeSize.toFixed(1)}" height="${arm.toFixed(1)}" /></g>\n`;
-        } else if (selectedShape === "x_cross") {
-          const arm = Math.max(1.5, effectiveShapeSize / 5.5);
-          const halfArm = arm / 2;
-          svgElements += `  <g fill="${fill}" transform="rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})"><rect x="${(cx - halfArm).toFixed(1)}" y="${(cy - r).toFixed(1)}" width="${arm.toFixed(1)}" height="${effectiveShapeSize.toFixed(1)}" /><rect x="${(cx - r).toFixed(1)}" y="${(cy - halfArm).toFixed(1)}" width="${effectiveShapeSize.toFixed(1)}" height="${arm.toFixed(1)}" /></g>\n`;
-        } else {
-          svgElements += `  <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" />\n`;
-        }
+        svgElements += buildSVGShapeElement(selectedShape, cx, cy, effectiveShapeSize, fill);
       }
     }
 
     const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">\n${svgElements}</svg>`;
-    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.download = `shape-mosaic-${selectedShape}-${Date.now()}.svg`;
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Draw Specific Geometric Shape Path via Vector Canvas Math
-  const drawShapePath = (
-    ctx: CanvasRenderingContext2D,
-    shape: ShapeType,
-    cx: number,
-    cy: number,
-    size: number,
-    fillColor: string
-  ) => {
-    const r = size / 2;
-
-    ctx.beginPath();
-    if (shape === "circle") {
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    } else if (shape === "ring") {
-      ctx.arc(cx, cy, r, 0, Math.PI * 2, false);
-      ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2, true);
-    } else if (shape === "square") {
-      ctx.rect(cx - r, cy - r, size, size);
-    } else if (shape === "triangle") {
-      ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx + r, cy + r);
-      ctx.lineTo(cx - r, cy + r);
-      ctx.closePath();
-    } else if (shape === "cross") {
-      const arm = Math.max(1.5, size / 5.5); // Thinner crisp cross
-      ctx.rect(cx - arm / 2, cy - r, arm, size);
-      ctx.rect(cx - r, cy - arm / 2, size, arm);
-    } else if (shape === "x_cross") {
-      const arm = Math.max(1.5, size / 5.5); // Thinner crisp X-cross
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(Math.PI / 4);
-      ctx.fillStyle = fillColor;
-      ctx.beginPath();
-      ctx.rect(-arm / 2, -r, arm, size);
-      ctx.rect(-r, -arm / 2, size, arm);
-      ctx.fill();
-      ctx.restore();
-      return;
-    } else if (shape === "diamond") {
-      ctx.moveTo(cx, cy - r);
-      ctx.lineTo(cx + r, cy);
-      ctx.lineTo(cx, cy + r);
-      ctx.lineTo(cx - r, cy);
-      ctx.closePath();
-    } else if (shape === "hexagon") {
-      for (let i = 0; i < 6; i++) {
-        const angle = (Math.PI / 3) * i - Math.PI / 6;
-        const x = cx + r * Math.cos(angle);
-        const y = cy + r * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-    } else if (shape === "star") {
-      const points = 5;
-      const innerR = r * 0.4;
-      for (let i = 0; i < points * 2; i++) {
-        const currentR = i % 2 === 0 ? r : innerR;
-        const angle = (Math.PI / points) * i - Math.PI / 2;
-        const x = cx + currentR * Math.cos(angle);
-        const y = cy + currentR * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-    }
+    exportSVGString(svgString, `shape-mosaic-${selectedShape}`);
   };
 
   // Render Loop for Multi-Layer Composition
@@ -394,7 +263,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
         const stepX = Math.max(2, (tileSize + gapX) * subjectScale);
         const stepY = Math.max(2, (tileSize + gapY) * subjectScale);
         const effectiveShapeSize = baseStep * shapeScale;
-        const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
+        const tintRgb = hexToRgb(customColor);
 
         // Loop through subject bounds step-by-step with scaled step sizes
         for (let y = 0; y < finalH; y += stepY) {
@@ -410,12 +279,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
             const aVal = imgData[idx + 3];
 
             // Background filtering checks: detect alpha PNG or fake PNG grey/white checkerboard
-            const isTransparent = aVal < 30;
-            const isMonochrome = Math.abs(rVal - gVal) < 18 && Math.abs(gVal - bVal) < 18 && Math.abs(rVal - bVal) < 18;
-            const avgBrightness = (rVal + gVal + bVal) / 3;
-            const isCheckerboard = isMonochrome && avgBrightness >= bgThreshold;
-
-            if (isTransparent || isCheckerboard) continue;
+            if (isBackgroundPixel({ r: rVal, g: gVal, b: bVal, a: aVal }, bgThreshold)) {
+              continue;
+            }
 
             const cx = finalX + x + stepX / 2;
             const cy = finalY + y + stepY / 2;
@@ -424,10 +290,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
             if (colorMode === "solid") {
               fill = customColor;
             } else if (colorMode === "tint") {
-              const finalR = Math.round(rVal * (1 - tintRatio) + tr * tintRatio);
-              const finalG = Math.round(gVal * (1 - tintRatio) + tg * tintRatio);
-              const finalB = Math.round(bVal * (1 - tintRatio) + tb * tintRatio);
-              fill = `rgb(${finalR}, ${finalG}, ${finalB})`;
+              const blended = blendRgb({ r: rVal, g: gVal, b: bVal }, tintRgb, tintRatio);
+              fill = `rgb(${blended.r}, ${blended.g}, ${blended.b})`;
             }
 
             ctx.save();
@@ -482,276 +346,120 @@ export const ShapeMosaicGenerator: React.FC = () => {
         {/* Layer 2 Position & Scaling Transforms */}
         {subjectImage && (
           <>
-            <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Cutout Position X</span>
-                <span className={styles.controlValue}>{subjectPosX}px</span>
-              </div>
-              <input
-                type="range"
-                min={-500}
-                max={500}
-                step={5}
-                value={subjectPosX}
-                onChange={(e) => setSubjectPosX(parseInt(e.target.value))}
-              />
-            </div>
+            <RangeSliderControl
+              label="Cutout Position X"
+              value={subjectPosX}
+              min={-500}
+              max={500}
+              step={5}
+              valueDisplay={`${subjectPosX}px`}
+              onChange={setSubjectPosX}
+              marginBottom={12}
+            />
 
-            <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Cutout Position Y</span>
-                <span className={styles.controlValue}>{subjectPosY}px</span>
-              </div>
-              <input
-                type="range"
-                min={-500}
-                max={500}
-                step={5}
-                value={subjectPosY}
-                onChange={(e) => setSubjectPosY(parseInt(e.target.value))}
-              />
-            </div>
+            <RangeSliderControl
+              label="Cutout Position Y"
+              value={subjectPosY}
+              min={-500}
+              max={500}
+              step={5}
+              valueDisplay={`${subjectPosY}px`}
+              onChange={setSubjectPosY}
+              marginBottom={12}
+            />
 
-            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Cutout Subject Size</span>
-                <span className={styles.controlValue}>{Math.round(subjectScale * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0.2}
-                max={2.0}
-                step={0.05}
-                value={subjectScale}
-                onChange={(e) => setSubjectScale(parseFloat(e.target.value))}
-              />
-            </div>
+            <RangeSliderControl
+              label="Cutout Subject Size"
+              value={subjectScale}
+              min={0.2}
+              max={2.0}
+              step={0.05}
+              valueDisplay={`${Math.round(subjectScale * 100)}%`}
+              onChange={setSubjectScale}
+              marginBottom={16}
+            />
           </>
         )}
 
-        {/* 3. Shape Selection */}
-        <div className={styles.sectionHeader}>
-          <span>Mosaic Shape Unit</span>
-        </div>
+        {/* 3. Mosaic Shape Selection Panel */}
+        <ShapeSelectorPanel
+          selectedShape={selectedShape}
+          onSelectShape={setSelectedShape}
+        />
 
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Select Shape</span>
-            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{selectedShape}</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            {SHAPE_OPTIONS.map((item) => (
-              <button
-                key={item.id}
-                style={{
-                  padding: "10px 8px",
-                  fontSize: "12px",
-                  fontWeight: selectedShape === item.id ? 800 : 700,
-                  background: selectedShape === item.id ? "#000000" : "#ffffff",
-                  border: "2px solid #000000",
-                  color: selectedShape === item.id ? "#ffffff" : "#000000",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-                onClick={() => setSelectedShape(item.id)}
-              >
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 4. Shape Color & Tint Controls */}
-        <div className={styles.sectionHeader}>
-          <span>Shape Color &amp; Tint</span>
-        </div>
-
-        {/* Color Mode Selection */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Color Mode</span>
-            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{colorMode}</span>
-          </div>
-          <div style={{ display: "flex", gap: "6px" }}>
-            {(["original", "solid", "tint"] as const).map((mode) => (
-              <button
-                key={mode}
-                style={{
-                  flex: 1,
-                  padding: "8px 4px",
-                  fontSize: "11px",
-                  fontWeight: colorMode === mode ? 800 : 700,
-                  textTransform: "capitalize",
-                  background: colorMode === mode ? "#000000" : "#ffffff",
-                  border: "2px solid #000000",
-                  color: colorMode === mode ? "#ffffff" : "#000000",
-                  borderRadius: "6px",
-                  cursor: "pointer"
-                }}
-                onClick={() => setColorMode(mode)}
-              >
-                {mode === "original" ? "Original" : mode === "solid" ? "Solid" : "Tint Blend"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom Color Picker & Presets (Active when mode is solid or tint) */}
-        {colorMode !== "original" && (
-          <>
-            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-              <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-                <span className={styles.controlLabel}>Custom Shape Color</span>
-                <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{customColor}</span>
-              </div>
-
-              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <input
-                  type="color"
-                  value={customColor}
-                  onChange={(e) => setCustomColor(e.target.value)}
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    padding: "0",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    background: "transparent"
-                  }}
-                />
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
-                  {PRESET_COLORS.map((c) => (
-                    <button
-                      key={c.name}
-                      onClick={() => setCustomColor(c.value)}
-                      style={{
-                        width: "22px",
-                        height: "22px",
-                        borderRadius: "50%",
-                        backgroundColor: c.value,
-                        border: customColor === c.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
-                        cursor: "pointer",
-                        padding: 0
-                      }}
-                      title={c.name}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Tint Blend Ratio Slider */}
-            {colorMode === "tint" && (
-              <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-                <div className={styles.controlHeader}>
-                  <span className={styles.controlLabel}>Tint Blend Ratio</span>
-                  <span className={styles.controlValue}>{Math.round(tintRatio * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0.1}
-                  max={1.0}
-                  step={0.05}
-                  value={tintRatio}
-                  onChange={(e) => setTintRatio(parseFloat(e.target.value))}
-                />
-              </div>
-            )}
-          </>
-        )}
+        {/* 4. Color & Tint Controls Panel */}
+        <ColorModePanel
+          colorMode={colorMode}
+          customColor={customColor}
+          tintRatio={tintRatio}
+          onSelectColorMode={setColorMode}
+          onChangeCustomColor={setCustomColor}
+          onChangeTintRatio={setTintRatio}
+        />
 
         {/* 5. Checkerboard Background Cutout Filter Sensitivity */}
         <div className={styles.sectionHeader}>
           <span>Checkerboard Cutout Filter</span>
         </div>
 
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Cutout Sensitivity</span>
-            <span className={styles.controlValue}>{bgThreshold}</span>
-          </div>
-          <input
-            type="range"
-            min={120}
-            max={240}
-            step={2}
-            value={bgThreshold}
-            onChange={(e) => setBgThreshold(parseInt(e.target.value))}
-          />
-        </div>
+        <RangeSliderControl
+          label="Cutout Sensitivity"
+          value={bgThreshold}
+          min={120}
+          max={240}
+          step={2}
+          onChange={setBgThreshold}
+          marginBottom={16}
+        />
 
         {/* 6. Mosaic Resolution & Spacing */}
         <div className={styles.sectionHeader}>
           <span>Mosaic Resolution &amp; Spacing</span>
         </div>
 
-        {/* Tile Size Slider */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Tile Grid Size</span>
-            <span className={styles.controlValue}>{tileSize}px</span>
-          </div>
-          <input
-            type="range"
-            min={6}
-            max={60}
-            step={2}
-            value={tileSize}
-            onChange={(e) => setTileSize(parseInt(e.target.value))}
-          />
-        </div>
+        <RangeSliderControl
+          label="Tile Grid Size"
+          value={tileSize}
+          min={6}
+          max={60}
+          step={2}
+          valueDisplay={`${tileSize}px`}
+          onChange={setTileSize}
+          marginBottom={16}
+        />
 
-        {/* Horizontal Spacing Slider (Gap X) */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Horizontal Distance (Gap X)</span>
-            <span className={styles.controlValue}>{gapX}px</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={40}
-            step={1}
-            value={gapX}
-            onChange={(e) => setGapX(parseInt(e.target.value))}
-          />
-        </div>
+        <RangeSliderControl
+          label="Horizontal Distance (Gap X)"
+          value={gapX}
+          min={0}
+          max={40}
+          step={1}
+          valueDisplay={`${gapX}px`}
+          onChange={setGapX}
+          marginBottom={16}
+        />
 
-        {/* Vertical Spacing Slider (Gap Y) */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Vertical Distance (Gap Y)</span>
-            <span className={styles.controlValue}>{gapY}px</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={40}
-            step={1}
-            value={gapY}
-            onChange={(e) => setGapY(parseInt(e.target.value))}
-          />
-        </div>
+        <RangeSliderControl
+          label="Vertical Distance (Gap Y)"
+          value={gapY}
+          min={0}
+          max={40}
+          step={1}
+          valueDisplay={`${gapY}px`}
+          onChange={setGapY}
+          marginBottom={16}
+        />
 
-        {/* Shape Scale Slider */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader}>
-            <span className={styles.controlLabel}>Shape Size Scale</span>
-            <span className={styles.controlValue}>{Math.round(shapeScale * 100)}%</span>
-          </div>
-          <input
-            type="range"
-            min={0.4}
-            max={1.2}
-            step={0.05}
-            value={shapeScale}
-            onChange={(e) => setShapeScale(parseFloat(e.target.value))}
-          />
-        </div>
+        <RangeSliderControl
+          label="Shape Size Scale"
+          value={shapeScale}
+          min={0.4}
+          max={1.2}
+          step={0.05}
+          valueDisplay={`${Math.round(shapeScale * 100)}%`}
+          onChange={setShapeScale}
+          marginBottom={16}
+        />
 
         {/* Shared Export Controls Component */}
         <ExportControls
