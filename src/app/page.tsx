@@ -6,16 +6,6 @@ import { GalleryCard, CardData } from "../components/GalleryCard";
 
 const CARDS: CardData[] = [
   {
-    id: "blur-and-reveal",
-    title: "Blur & Reveal",
-    author: "Created By Victor Chen",
-    href: "/blur-and-reveal",
-    image: "/thumbnails/blur-and-reveal.png",
-    likes: 12,
-    remixes: 480,
-    shares: 18
-  },
-  {
     id: "glass-effect",
     title: "Glass Effect",
     author: "Created By Victor Chen",
