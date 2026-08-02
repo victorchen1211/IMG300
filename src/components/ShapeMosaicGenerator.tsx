@@ -188,8 +188,10 @@ export const ShapeMosaicGenerator: React.FC = () => {
       const bgH = bgImage.naturalHeight;
       const bgAspect = bgW / bgH;
 
-      const maxW = w * 0.92;
-      const maxH = h * 0.92;
+      const isMobile = w <= 1024 || (typeof window !== "undefined" && window.innerWidth <= 1024);
+      const scaleFactor = isMobile ? 0.98 : 0.92;
+      const maxW = w * scaleFactor;
+      const maxH = h * scaleFactor;
 
       let bgDrawW = maxW;
       let bgDrawH = maxW / bgAspect;
