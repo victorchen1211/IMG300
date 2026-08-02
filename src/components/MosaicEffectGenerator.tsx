@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
-import { ImageUploader, BrikSliderControl, BrikAccordionSection, CanvasViewport } from "./common";
+import { ImageUploader, BrikSliderControl, BrikAccordionSection, CanvasViewport, ColorPickerControl } from "./common";
 
 // Preset Color Swatches for Cutout Background
 const CUTOUT_BG_COLORS = [
@@ -230,59 +230,85 @@ export const MosaicEffectGenerator: React.FC = () => {
       });
     }
 
-    // 3. Render Directional Tile Mirror Extension ONLY for Selected Tiles at Symmetric Mirrored Position
-    if (isEffectEnabled && mirrorDirection !== "none" && selectedTiles.size > 0) {
-      selectedTiles.forEach((tileKey) => {
-        const [rStr, cStr] = tileKey.split(",");
-        const r = parseInt(rStr, 10);
-        const c = parseInt(cStr, 10);
+    // 3. Render Directional Tile Mirror Extension & Mirrored Canvas Background Fill
+    if (isEffectEnabled && mirrorDirection !== "none") {
+      let mirrorStartX = drawX;
+      let mirrorStartY = drawY;
 
-        if (r < numRows && c < numCols) {
-          const srcTileX = c * tileW_Img;
-          const srcTileY = r * tileH_Img;
+      if (mirrorDirection === "up") {
+        mirrorStartY = drawY - drawH;
+      } else if (mirrorDirection === "down") {
+        mirrorStartY = drawY + drawH;
+      } else if (mirrorDirection === "left") {
+        mirrorStartX = drawX - drawW;
+      } else if (mirrorDirection === "right") {
+        mirrorStartX = drawX + drawW;
+      }
 
-          let targetTileX = drawX + c * tileW_Canvas;
-          let targetTileY = drawY + r * tileH_Canvas;
-          let scaleX = 1;
-          let scaleY = 1;
+      // Fill Background of Mirrored Canvas with Cutout Fill Color
+      ctx.save();
+      if (cutoutBgColor === "transparent") {
+        ctx.clearRect(mirrorStartX, mirrorStartY, drawW, drawH);
+      } else {
+        ctx.fillStyle = cutoutBgColor;
+        ctx.fillRect(mirrorStartX, mirrorStartY, drawW, drawH);
+      }
+      ctx.restore();
 
-          if (mirrorDirection === "up") {
-            targetTileY = drawY - drawH + (numRows - 1 - r) * tileH_Canvas;
-            scaleY = -1;
-          } else if (mirrorDirection === "down") {
-            targetTileY = drawY + drawH + (numRows - 1 - r) * tileH_Canvas;
-            scaleY = -1;
-          } else if (mirrorDirection === "left") {
-            targetTileX = drawX - drawW + (numCols - 1 - c) * tileW_Canvas;
-            scaleX = -1;
-          } else if (mirrorDirection === "right") {
-            targetTileX = drawX + drawW + (numCols - 1 - c) * tileW_Canvas;
-            scaleX = -1;
+      // Paste Mirrored Selected Tile Cutouts onto Mirrored Canvas
+      if (selectedTiles.size > 0) {
+        selectedTiles.forEach((tileKey) => {
+          const [rStr, cStr] = tileKey.split(",");
+          const r = parseInt(rStr, 10);
+          const c = parseInt(cStr, 10);
+
+          if (r < numRows && c < numCols) {
+            const srcTileX = c * tileW_Img;
+            const srcTileY = r * tileH_Img;
+
+            let targetTileX = drawX + c * tileW_Canvas;
+            let targetTileY = drawY + r * tileH_Canvas;
+            let scaleX = 1;
+            let scaleY = 1;
+
+            if (mirrorDirection === "up") {
+              targetTileY = drawY - drawH + (numRows - 1 - r) * tileH_Canvas;
+              scaleY = -1;
+            } else if (mirrorDirection === "down") {
+              targetTileY = drawY + drawH + (numRows - 1 - r) * tileH_Canvas;
+              scaleY = -1;
+            } else if (mirrorDirection === "left") {
+              targetTileX = drawX - drawW + (numCols - 1 - c) * tileW_Canvas;
+              scaleX = -1;
+            } else if (mirrorDirection === "right") {
+              targetTileX = drawX + drawW + (numCols - 1 - c) * tileW_Canvas;
+              scaleX = -1;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(targetTileX, targetTileY, tileW_Canvas, tileH_Canvas);
+            ctx.clip();
+
+            ctx.translate(targetTileX + tileW_Canvas / 2, targetTileY + tileH_Canvas / 2);
+            ctx.scale(scaleX, scaleY);
+
+            ctx.drawImage(
+              sourceImage,
+              srcTileX,
+              srcTileY,
+              tileW_Img,
+              tileH_Img,
+              -tileW_Canvas / 2,
+              -tileH_Canvas / 2,
+              tileW_Canvas,
+              tileH_Canvas
+            );
+
+            ctx.restore();
           }
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(targetTileX, targetTileY, tileW_Canvas, tileH_Canvas);
-          ctx.clip();
-
-          ctx.translate(targetTileX + tileW_Canvas / 2, targetTileY + tileH_Canvas / 2);
-          ctx.scale(scaleX, scaleY);
-
-          ctx.drawImage(
-            sourceImage,
-            srcTileX,
-            srcTileY,
-            tileW_Img,
-            tileH_Img,
-            -tileW_Canvas / 2,
-            -tileH_Canvas / 2,
-            tileW_Canvas,
-            tileH_Canvas
-          );
-
-          ctx.restore();
-        }
-      });
+        });
+      }
     }
 
     // 4. Render Reference Base Grid Lines & Selected Tile Highlight Frames
@@ -649,36 +675,14 @@ export const MosaicEffectGenerator: React.FC = () => {
                 </div>
               </div>
 
-              {/* Cutout Color Swatches */}
+              {/* Cutout Fill Color Control using Shared Component */}
               {selectedEffectMode === "cutout" && (
-                <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
-                  <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-                    <span className={styles.controlLabel}>Cutout Fill Color</span>
-                  </div>
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                    {CUTOUT_BG_COLORS.map((item) => (
-                      <button
-                        key={item.name}
-                        title={item.name}
-                        style={{
-                          width: "28px",
-                          height: "28px",
-                          borderRadius: "50%",
-                          background: item.value === "transparent" ? "#ffffff" : item.value,
-                          border: cutoutBgColor === item.value ? "3px solid #00e5ff" : "1px solid #ccc",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "10px"
-                        }}
-                        onClick={() => setCutoutBgColor(item.value)}
-                      >
-                        {item.value === "transparent" && "✕"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <ColorPickerControl
+                  label="Cutout Fill Color"
+                  value={cutoutBgColor}
+                  onChange={setCutoutBgColor}
+                  marginBottom={12}
+                />
               )}
 
               {/* Mosaic Mode: Resolution Slider */}
