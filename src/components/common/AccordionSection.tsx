@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import styles from "../../app/page.module.scss";
 
 interface AccordionSectionProps {
   title: string;
@@ -17,24 +16,34 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
   children
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(defaultOpen);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
 
   return (
-    <div style={{ marginBottom: 8 }}>
+    <div style={{ marginBottom: 12 }}>
+      {/* Collapsible Header Bar */}
       <div
-        className={styles.sectionHeader}
+        onClick={() => setIsOpen(!isOpen)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         style={{
           cursor: "pointer",
           userSelect: "none",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center"
+          alignItems: "center",
+          padding: "10px 12px",
+          background: isHovered ? "rgba(255, 255, 255, 0.12)" : "rgba(255, 255, 255, 0.05)",
+          border: "1px solid rgba(255, 255, 255, 0.14)",
+          borderRadius: "6px",
+          transition: "all 0.18s ease"
         }}
-        onClick={() => setIsOpen(!isOpen)}
       >
-        <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span
             style={{
-              fontSize: "9px",
+              fontSize: "11px",
+              fontWeight: 800,
+              color: "#ffffff",
               transition: "transform 0.2s ease",
               transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
               display: "inline-block"
@@ -42,15 +51,52 @@ export const AccordionSection: React.FC<AccordionSectionProps> = ({
           >
             ▶
           </span>
-          <span>{title}</span>
-        </span>
-        {badge && (
-          <span style={{ fontSize: "10px", opacity: 0.6 }}>{badge}</span>
-        )}
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              fontFamily: '"SF Mono", "Menlo", monospace',
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#ffffff"
+            }}
+          >
+            {title}
+          </span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {badge && (
+            <span
+              style={{
+                fontSize: "10px",
+                padding: "2px 6px",
+                background: "rgba(255, 255, 255, 0.15)",
+                borderRadius: "4px",
+                color: "#ddd"
+              }}
+            >
+              {badge}
+            </span>
+          )}
+          <span
+            style={{
+              fontSize: "10px",
+              fontWeight: 700,
+              color: isOpen ? "#00e5ff" : "#888888",
+              fontFamily: '"SF Mono", monospace',
+              textTransform: "uppercase",
+              letterSpacing: "0.04em"
+            }}
+          >
+            {isOpen ? "Collapse ▲" : "Expand ▼"}
+          </span>
+        </div>
       </div>
 
+      {/* Collapsible Content Area */}
       {isOpen && (
-        <div style={{ paddingTop: 4, paddingBottom: 4 }}>
+        <div style={{ paddingTop: 8, paddingBottom: 4 }}>
           {children}
         </div>
       )}
