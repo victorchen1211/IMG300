@@ -79,11 +79,23 @@ export const ShapeMosaicGenerator: React.FC = () => {
     bgImg.onload = () => setBgImage(bgImg);
     bgImg.src = "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80";
 
-    // Default Cutout Subject Image
-    const subImg = new Image();
-    subImg.crossOrigin = "anonymous";
-    subImg.onload = () => setSubjectImage(subImg);
-    subImg.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png";
+    // Default "IMG300" Typography Cutout Subject Image
+    const textCanvas = document.createElement("canvas");
+    textCanvas.width = 1200;
+    textCanvas.height = 500;
+    const textCtx = textCanvas.getContext("2d");
+    if (textCtx) {
+      textCtx.clearRect(0, 0, 1200, 500);
+      textCtx.fillStyle = "#ffffff";
+      textCtx.font = '900 240px "Space Mono", "Inter", system-ui, sans-serif';
+      textCtx.textAlign = "center";
+      textCtx.textBaseline = "middle";
+      textCtx.fillText("IMG300", 600, 250);
+
+      const textImg = new Image();
+      textImg.onload = () => setSubjectImage(textImg);
+      textImg.src = textCanvas.toDataURL("image/png");
+    }
   }, []);
 
   // Handle Layer 1 Main Background Image Upload
