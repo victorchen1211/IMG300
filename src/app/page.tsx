@@ -36,6 +36,16 @@ const CARDS: CardData[] = [
     shares: 19
   },
   {
+    id: "shape-mosaic",
+    title: "Shape Mosaic",
+    author: "Created By Victor Chen",
+    href: "/shape-mosaic",
+    image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=600&q=80",
+    likes: 18,
+    remixes: 420,
+    shares: 25
+  },
+  {
     id: "halftone-matrix",
     title: "Halftone Matrix",
     author: "Created By Victor Chen",
