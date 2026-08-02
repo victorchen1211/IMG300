@@ -10,7 +10,7 @@ body,
 #root {
   width: 100%;
   min-height: 100vh;
-  font-family: "Telegraf", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Neue Haas Grotesk Text Pro", "Neue Haas Grotesk Text Std", "neue-haas-grotesk-text", "neue-haas-grotesk-display", Inter, system-ui, sans-serif;
   background-color: #f3f4f6;
   color: #222;
   overflow-x: hidden;
@@ -147,7 +147,7 @@ input[type="text"] {
   width: 100%;
   padding: 7px 8px;
   font-size: 11px;
-  font-family: "Telegraf", system-ui, -apple-system, sans-serif;
+  font-family: "Neue Haas Grotesk Text Pro", "Neue Haas Grotesk Text Std", "neue-haas-grotesk-text", "neue-haas-grotesk-display", Inter, system-ui, sans-serif;
   border: 1px solid #ddd;
   border-radius: 0;
   background: #ffffff;
@@ -161,7 +161,7 @@ input[type="text"] {
 
 /* UI Buttons */
 button {
-  font-family: "Telegraf", system-ui, -apple-system, sans-serif;
+  font-family: "Neue Haas Grotesk Text Pro", "Neue Haas Grotesk Text Std", "neue-haas-grotesk-text", "neue-haas-grotesk-display", Inter, system-ui, sans-serif;
   font-size: 11px;
   letter-spacing: 0.04em;
   border: 1px solid #ddd;
