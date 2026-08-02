@@ -601,7 +601,7 @@
   &.landscapeCard {
     /* Auto-detected landscape orientation */
     grid-column: span 1;
-    
+
     @media (min-width: 1025px) {
       grid-column: span 2;
     }

@@ -46,7 +46,6 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
           onMouseLeave={onMouseLeaveCanvas}
           style={{
             maxWidth: "100%",
-            maxHeight: "100%",
             borderRadius: "12px",
             boxShadow: "0 10px 40px rgba(0, 0, 0, 0.15)",
             cursor,
