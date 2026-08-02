@@ -5,6 +5,7 @@ import styles from "../app/page.module.scss";
 import { ImageUploader, ExportControls } from "./common";
 
 type ShapeType = "circle" | "square" | "triangle" | "cross" | "diamond" | "hexagon" | "star";
+type ColorMode = "original" | "solid" | "tint";
 
 const SHAPE_OPTIONS: { id: ShapeType; label: string }[] = [
   { id: "circle", label: "Circle" },
@@ -15,6 +16,30 @@ const SHAPE_OPTIONS: { id: ShapeType; label: string }[] = [
   { id: "hexagon", label: "Hexagon" },
   { id: "star", label: "Star" }
 ];
+
+const PRESET_COLORS = [
+  { name: "Pure White", value: "#ffffff" },
+  { name: "Cyber Cyan", value: "#00e5ff" },
+  { name: "Neon Pink", value: "#ff007f" },
+  { name: "Electric Yellow", value: "#ffea00" },
+  { name: "Neon Green", value: "#00ff66" },
+  { name: "Sunset Orange", value: "#ff5500" },
+  { name: "Pure Black", value: "#000000" }
+];
+
+// Helper to parse hex color to RGB
+const hexToRgb = (hex: string) => {
+  let cleanHex = hex.replace("#", "");
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split("").map((c) => c + c).join("");
+  }
+  const num = parseInt(cleanHex, 16);
+  return {
+    r: (num >> 16) & 255,
+    g: (num >> 8) & 255,
+    b: num & 255
+  };
+};
 
 export const ShapeMosaicGenerator: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -29,7 +54,12 @@ export const ShapeMosaicGenerator: React.FC = () => {
   const [gapX, setGapX] = useState<number>(0); // Horizontal Gap Distance (0px to 40px)
   const [gapY, setGapY] = useState<number>(0); // Vertical Gap Distance (0px to 40px)
 
-  // Smart Checkerboard Background Cutout Filter Sensitivity (Detect & eliminate fake PNG grey/white checkerboards)
+  // Color Override & Tint Controls
+  const [colorMode, setColorMode] = useState<ColorMode>("original"); // "original" | "solid" | "tint"
+  const [customColor, setCustomColor] = useState<string>("#00e5ff"); // Default Cyber Cyan
+  const [tintRatio, setTintRatio] = useState<number>(0.5); // Blend ratio (0.1 to 1.0)
+
+  // Smart Checkerboard Background Cutout Filter Sensitivity
   const [bgThreshold, setBgThreshold] = useState<number>(170); // Threshold for neutral grey/white checkerboard removal
 
   // Load default sample transparent PNG cutout on mount
@@ -98,6 +128,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
     const r = effectiveShapeSize / 2;
 
     let svgElements = "";
+    const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
 
     for (let y = 0; y < drawH; y += stepY) {
       for (let x = 0; x < drawW; x += stepX) {
@@ -119,7 +150,16 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
         const cx = drawX + x + baseStep / 2;
         const cy = drawY + y + baseStep / 2;
-        const fill = `rgb(${rVal},${gVal},${bVal})`;
+
+        let fill = `rgb(${rVal},${gVal},${bVal})`;
+        if (colorMode === "solid") {
+          fill = customColor;
+        } else if (colorMode === "tint") {
+          const finalR = Math.round(rVal * (1 - tintRatio) + tr * tintRatio);
+          const finalG = Math.round(gVal * (1 - tintRatio) + tg * tintRatio);
+          const finalB = Math.round(bVal * (1 - tintRatio) + tb * tintRatio);
+          fill = `rgb(${finalR},${finalG},${finalB})`;
+        }
 
         if (selectedShape === "circle") {
           svgElements += `  <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" />\n`;
@@ -240,6 +280,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
         const stepX = baseStep + gapX;
         const stepY = baseStep + gapY;
         const effectiveShapeSize = baseStep * shapeScale;
+        const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
 
         // Loop through image bounds step-by-step with independent X/Y gaps
         for (let y = 0; y < drawH; y += stepY) {
@@ -265,8 +306,18 @@ export const ShapeMosaicGenerator: React.FC = () => {
             const cx = drawX + x + baseStep / 2;
             const cy = drawY + y + baseStep / 2;
 
+            let fill = `rgb(${rVal}, ${gVal}, ${bVal})`;
+            if (colorMode === "solid") {
+              fill = customColor;
+            } else if (colorMode === "tint") {
+              const finalR = Math.round(rVal * (1 - tintRatio) + tr * tintRatio);
+              const finalG = Math.round(gVal * (1 - tintRatio) + tg * tintRatio);
+              const finalB = Math.round(bVal * (1 - tintRatio) + tb * tintRatio);
+              fill = `rgb(${finalR}, ${finalG}, ${finalB})`;
+            }
+
             ctx.save();
-            ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
+            ctx.fillStyle = fill;
             drawShapePath(ctx, selectedShape, cx, cy, effectiveShapeSize);
             ctx.fill();
             ctx.restore();
@@ -279,7 +330,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN SHAPE MOSAIC CREATION", w / 2, h / 2);
     }
-  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY, bgThreshold]);
+  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY, colorMode, customColor, tintRatio, bgThreshold]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -338,7 +389,107 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Checkerboard Background Cutout Filter Sensitivity */}
+        {/* 2. Shape Color & Tint Controls */}
+        <div className={styles.sectionHeader}>
+          <span>Shape Color &amp; Tint</span>
+        </div>
+
+        {/* Color Mode Selection */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Color Mode</span>
+            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{colorMode}</span>
+          </div>
+          <div style={{ display: "flex", gap: "6px" }}>
+            {(["original", "solid", "tint"] as const).map((mode) => (
+              <button
+                key={mode}
+                style={{
+                  flex: 1,
+                  padding: "8px 4px",
+                  fontSize: "11px",
+                  fontWeight: colorMode === mode ? 800 : 700,
+                  textTransform: "capitalize",
+                  background: colorMode === mode ? "#000000" : "#ffffff",
+                  border: "2px solid #000000",
+                  color: colorMode === mode ? "#ffffff" : "#000000",
+                  borderRadius: "6px",
+                  cursor: "pointer"
+                }}
+                onClick={() => setColorMode(mode)}
+              >
+                {mode === "original" ? "Original" : mode === "solid" ? "Solid" : "Tint Blend"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom Color Picker & Presets (Active when mode is solid or tint) */}
+        {colorMode !== "original" && (
+          <>
+            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+              <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+                <span className={styles.controlLabel}>Custom Shape Color</span>
+                <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{customColor}</span>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => setCustomColor(e.target.value)}
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    padding: "0",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    background: "transparent"
+                  }}
+                />
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+                  {PRESET_COLORS.map((c) => (
+                    <button
+                      key={c.name}
+                      onClick={() => setCustomColor(c.value)}
+                      style={{
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "50%",
+                        backgroundColor: c.value,
+                        border: customColor === c.value ? "2px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.2)",
+                        cursor: "pointer",
+                        padding: 0
+                      }}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Tint Blend Ratio Slider (Active in Tint Mode) */}
+            {colorMode === "tint" && (
+              <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+                <div className={styles.controlHeader}>
+                  <span className={styles.controlLabel}>Tint Blend Ratio</span>
+                  <span className={styles.controlValue}>{Math.round(tintRatio * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1.0}
+                  step={0.05}
+                  value={tintRatio}
+                  onChange={(e) => setTintRatio(parseFloat(e.target.value))}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 3. Checkerboard Background Cutout Filter Sensitivity */}
         <div className={styles.sectionHeader}>
           <span>Checkerboard Cutout Filter</span>
         </div>
@@ -358,7 +509,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
           />
         </div>
 
-        {/* 3. Mosaic Resolution & Spacing */}
+        {/* 4. Mosaic Resolution & Spacing */}
         <div className={styles.sectionHeader}>
           <span>Mosaic Resolution &amp; Spacing</span>
         </div>
