@@ -4,11 +4,29 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
 import { ImageUploader } from "./common";
 
+type ShapeType = "circle" | "square" | "triangle" | "cross" | "diamond" | "hexagon" | "star";
+
+const SHAPE_OPTIONS: { id: ShapeType; label: string; icon: string }[] = [
+  { id: "circle", label: "Circle", icon: "●" },
+  { id: "square", label: "Square", icon: "■" },
+  { id: "triangle", label: "Triangle", icon: "▲" },
+  { id: "cross", label: "Cross", icon: "┼" },
+  { id: "diamond", label: "Diamond", icon: "◆" },
+  { id: "hexagon", label: "Hexagon", icon: "⬡" },
+  { id: "star", label: "Star", icon: "★" }
+];
+
 export const ShapeMosaicGenerator: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
+
+  // Shape Mosaic Control States
+  const [selectedShape, setSelectedShape] = useState<ShapeType>("circle");
+  const [tileSize, setTileSize] = useState<number>(18); // Tile Grid Step (6px to 60px)
+  const [shapeScale, setShapeScale] = useState<number>(0.85); // Shape Size Scale (0.4 to 1.0)
+  const [showBaseImage, setShowBaseImage] = useState<boolean>(false); // Overlay original underneath
 
   // Load default sample transparent PNG/image on mount
   useEffect(() => {
@@ -25,7 +43,61 @@ export const ShapeMosaicGenerator: React.FC = () => {
     setSourceImage(img);
   };
 
-  // Render Loop to Draw Studio Canvas and Base Image
+  // Draw Specific Geometric Shape Path
+  const drawShapePath = (
+    ctx: CanvasRenderingContext2D,
+    shape: ShapeType,
+    cx: number,
+    cy: number,
+    size: number
+  ) => {
+    const r = size / 2;
+
+    ctx.beginPath();
+    if (shape === "circle") {
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    } else if (shape === "square") {
+      ctx.rect(cx - r, cy - r, size, size);
+    } else if (shape === "triangle") {
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy + r);
+      ctx.lineTo(cx - r, cy + r);
+      ctx.closePath();
+    } else if (shape === "cross") {
+      const arm = size / 3;
+      ctx.rect(cx - arm / 2, cy - r, arm, size);
+      ctx.rect(cx - r, cy - arm / 2, size, arm);
+    } else if (shape === "diamond") {
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy);
+      ctx.lineTo(cx, cy + r);
+      ctx.lineTo(cx - r, cy);
+      ctx.closePath();
+    } else if (shape === "hexagon") {
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 6;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    } else if (shape === "star") {
+      const points = 5;
+      const innerR = r * 0.4;
+      for (let i = 0; i < points * 2; i++) {
+        const currentR = i % 2 === 0 ? r : innerR;
+        const angle = (Math.PI / points) * i - Math.PI / 2;
+        const x = cx + currentR * Math.cos(angle);
+        const y = cy + currentR * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
+  };
+
+  // Render Loop to Pixelate Image into Geometric Mosaic Shapes
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -66,8 +138,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
       const imgH = sourceImage.naturalHeight;
       const imgAspect = imgW / imgH;
 
-      const maxW = w * 0.94;
-      const maxH = h * 0.94;
+      const maxW = w * 0.92;
+      const maxH = h * 0.92;
 
       let drawW = maxW;
       let drawH = maxW / imgAspect;
@@ -80,22 +152,61 @@ export const ShapeMosaicGenerator: React.FC = () => {
       const drawX = (w - drawW) / 2;
       const drawY = (h - drawH) / 2;
 
-      // Drop Shadow for Image Frame
-      ctx.save();
-      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-      ctx.shadowBlur = 40;
-      ctx.shadowOffsetY = 15;
+      // Offscreen canvas for alpha transparent pixel color sampling
+      const offCanvas = document.createElement("canvas");
+      offCanvas.width = imgW;
+      offCanvas.height = imgH;
+      const offCtx = offCanvas.getContext("2d");
 
-      // Draw Uploaded Image
-      ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
-      ctx.restore();
+      if (offCtx) {
+        offCtx.drawImage(sourceImage, 0, 0);
+        const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
+
+        // Optionally draw base image underneath at low opacity if enabled
+        if (showBaseImage) {
+          ctx.save();
+          ctx.globalAlpha = 0.15;
+          ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
+          ctx.restore();
+        }
+
+        const step = Math.max(4, tileSize);
+        const effectiveShapeSize = step * shapeScale;
+
+        // Loop through image bounds step-by-step
+        for (let y = 0; y < drawH; y += step) {
+          for (let x = 0; x < drawW; x += step) {
+            // Map cell center to source image pixel coordinates
+            const sampleX = Math.min(imgW - 1, Math.floor(((x + step / 2) / drawW) * imgW));
+            const sampleY = Math.min(imgH - 1, Math.floor(((y + step / 2) / drawH) * imgH));
+
+            const idx = (sampleY * imgW + sampleX) * 4;
+            const rVal = imgData[idx];
+            const gVal = imgData[idx + 1];
+            const bVal = imgData[idx + 2];
+            const aVal = imgData[idx + 3];
+
+            // Skip transparent PNG background pixels
+            if (aVal < 20) continue;
+
+            const cx = drawX + x + step / 2;
+            const cy = drawY + y + step / 2;
+
+            ctx.save();
+            ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
+            drawShapePath(ctx, selectedShape, cx, cy, effectiveShapeSize);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
     } else {
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.font = '600 16px "Space Mono", monospace';
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN SHAPE MOSAIC CREATION", w / 2, h / 2);
     }
-  }, [sourceImage]);
+  }, [sourceImage, selectedShape, tileSize, shapeScale, showBaseImage]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -119,22 +230,120 @@ export const ShapeMosaicGenerator: React.FC = () => {
           onUploadImage={handleUploadImage}
         />
 
+        {/* 1. Shape Selection */}
         <div className={styles.sectionHeader}>
-          <span>Controls</span>
+          <span>Mosaic Shape Unit</span>
         </div>
 
-        <div
-          style={{
-            background: "rgba(255, 255, 255, 0.04)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "6px",
-            padding: "16px",
-            fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.7)",
-            lineHeight: "1.6"
-          }}
-        >
-          Shape Mosaic Generator initialized. Upload a cut-out PNG or image to get started.
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Select Shape</span>
+            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{selectedShape}</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            {SHAPE_OPTIONS.map((item) => (
+              <button
+                key={item.id}
+                style={{
+                  padding: "10px 8px",
+                  fontSize: "12px",
+                  fontWeight: selectedShape === item.id ? 800 : 700,
+                  background: selectedShape === item.id ? "#000000" : "#ffffff",
+                  border: "2px solid #000000",
+                  color: selectedShape === item.id ? "#ffffff" : "#000000",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px"
+                }}
+                onClick={() => setSelectedShape(item.id)}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. Mosaic Resolution / Tile Size */}
+        <div className={styles.sectionHeader}>
+          <span>Mosaic Resolution &amp; Scaling</span>
+        </div>
+
+        {/* Tile Size Slider */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Tile Grid Size</span>
+            <span className={styles.controlValue}>{tileSize}px</span>
+          </div>
+          <input
+            type="range"
+            min={6}
+            max={60}
+            step={2}
+            value={tileSize}
+            onChange={(e) => setTileSize(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* Shape Scale Slider */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Shape Size Scale</span>
+            <span className={styles.controlValue}>{Math.round(shapeScale * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min={0.4}
+            max={1.2}
+            step={0.05}
+            value={shapeScale}
+            onChange={(e) => setShapeScale(parseFloat(e.target.value))}
+          />
+        </div>
+
+        {/* 3. Base Image Ghost Overlay Toggle */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Base Image Underlay</span>
+            <span className={styles.controlValue}>{showBaseImage ? "VISIBLE" : "HIDDEN"}</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: showBaseImage ? 800 : 700,
+                background: showBaseImage ? "#000000" : "#ffffff",
+                border: "2px solid #000000",
+                color: showBaseImage ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
+              }}
+              onClick={() => setShowBaseImage(true)}
+            >
+              ✓ Visible
+            </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "8px",
+                fontSize: "12px",
+                fontWeight: !showBaseImage ? 800 : 700,
+                background: !showBaseImage ? "#000000" : "#ffffff",
+                border: "2px solid #000000",
+                color: !showBaseImage ? "#ffffff" : "#000000",
+                borderRadius: "6px",
+                cursor: "pointer"
+              }}
+              onClick={() => setShowBaseImage(false)}
+            >
+              ✕ Hidden
+            </button>
+          </div>
         </div>
       </div>
 
@@ -155,7 +364,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Shape Mosaic Studio (1920x1080 Full HD)
+          IMG300 Studio • Shape Mosaic Studio ({selectedShape.toUpperCase()} Unit • {tileSize}px Tile Size)
         </div>
       </div>
     </div>
