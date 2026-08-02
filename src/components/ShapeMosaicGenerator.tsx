@@ -45,7 +45,14 @@ export const ShapeMosaicGenerator: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
+  // Multi-Layer Image State
+  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null); // Layer 1: Main Background Image
+  const [subjectImage, setSubjectImage] = useState<HTMLImageElement | null>(null); // Layer 2: Cutout Subject Image
+
+  // Layer 2 Subject Transform Controls
+  const [subjectPosX, setSubjectPosX] = useState<number>(0); // Horizontal Offset (-500px ~ 500px)
+  const [subjectPosY, setSubjectPosY] = useState<number>(0); // Vertical Offset (-500px ~ 500px)
+  const [subjectScale, setSubjectScale] = useState<number>(1.0); // Scale Factor (0.2 ~ 2.0)
 
   // Shape Mosaic Control States
   const [selectedShape, setSelectedShape] = useState<ShapeType>("cross");
@@ -62,55 +69,67 @@ export const ShapeMosaicGenerator: React.FC = () => {
   // Smart Checkerboard Background Cutout Filter Sensitivity
   const [bgThreshold, setBgThreshold] = useState<number>(170); // Threshold for neutral grey/white checkerboard removal
 
-  // Load default sample transparent PNG cutout on mount
+  // Load default sample background image & transparent PNG cutout subject on mount
   useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      setSourceImage(img);
-    };
-    img.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png";
+    // Default Main Background Image
+    const bgImg = new Image();
+    bgImg.crossOrigin = "anonymous";
+    bgImg.onload = () => setBgImage(bgImg);
+    bgImg.src = "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=80";
+
+    // Default Cutout Subject Image
+    const subImg = new Image();
+    subImg.crossOrigin = "anonymous";
+    subImg.onload = () => setSubjectImage(subImg);
+    subImg.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png";
   }, []);
 
-  // Handle Image Upload
-  const handleUploadImage = (img: HTMLImageElement) => {
-    setSourceImage(img);
+  // Handle Layer 1 Main Background Image Upload
+  const handleUploadBgImage = (img: HTMLImageElement) => {
+    setBgImage(img);
   };
 
-  // Export PNG Handler (Preserves 100% transparent PNG output)
+  // Handle Layer 2 Cutout Subject Image Upload
+  const handleUploadSubjectImage = (img: HTMLImageElement) => {
+    setSubjectImage(img);
+  };
+
+  // Export PNG Handler
   const handleExportPNG = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const link = document.createElement("a");
-    link.download = `shape-mosaic-${selectedShape}-${Date.now()}.png`;
+    link.download = `shape-mosaic-composition-${selectedShape}-${Date.now()}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
 
-  // Export SVG Handler (Generates vector geometric shape elements)
+  // Export SVG Handler
   const handleExportSVG = () => {
     const canvas = canvasRef.current;
-    if (!canvas || !sourceImage || !sourceImage.complete || sourceImage.naturalWidth === 0) return;
+    if (!canvas || !subjectImage || !subjectImage.complete || subjectImage.naturalWidth === 0) return;
 
     const w = canvas.width;
     const h = canvas.height;
-    const imgW = sourceImage.naturalWidth;
-    const imgH = sourceImage.naturalHeight;
+    const imgW = subjectImage.naturalWidth;
+    const imgH = subjectImage.naturalHeight;
     const imgAspect = imgW / imgH;
 
-    const maxW = w * 0.92;
-    const maxH = h * 0.92;
+    const maxW = w * 0.85;
+    const maxH = h * 0.85;
 
-    let drawW = maxW;
-    let drawH = maxW / imgAspect;
+    let subDrawW = maxW;
+    let subDrawH = maxW / imgAspect;
 
-    if (drawH > maxH) {
-      drawH = maxH;
-      drawW = maxH * imgAspect;
+    if (subDrawH > maxH) {
+      subDrawH = maxH;
+      subDrawW = maxH * imgAspect;
     }
 
-    const drawX = (w - drawW) / 2;
-    const drawY = (h - drawH) / 2;
+    const finalW = subDrawW * subjectScale;
+    const finalH = subDrawH * subjectScale;
+    const finalX = (w - finalW) / 2 + subjectPosX;
+    const finalY = (h - finalH) / 2 + subjectPosY;
 
     const offCanvas = document.createElement("canvas");
     offCanvas.width = imgW;
@@ -118,7 +137,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
     const offCtx = offCanvas.getContext("2d");
     if (!offCtx) return;
 
-    offCtx.drawImage(sourceImage, 0, 0);
+    offCtx.drawImage(subjectImage, 0, 0);
     const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
 
     const baseStep = Math.max(4, tileSize);
@@ -130,10 +149,10 @@ export const ShapeMosaicGenerator: React.FC = () => {
     let svgElements = "";
     const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
 
-    for (let y = 0; y < drawH; y += stepY) {
-      for (let x = 0; x < drawW; x += stepX) {
-        const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / drawW) * imgW));
-        const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / drawH) * imgH));
+    for (let y = 0; y < finalH; y += stepY) {
+      for (let x = 0; x < finalW; x += stepX) {
+        const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / finalW) * imgW));
+        const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / finalH) * imgH));
 
         const idx = (sampleY * imgW + sampleX) * 4;
         const rVal = imgData[idx];
@@ -148,8 +167,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
         if (isTransparent || isCheckerboard) continue;
 
-        const cx = drawX + x + baseStep / 2;
-        const cy = drawY + y + baseStep / 2;
+        const cx = finalX + x + baseStep / 2;
+        const cy = finalY + y + baseStep / 2;
 
         let fill = `rgb(${rVal},${gVal},${bVal})`;
         if (colorMode === "solid") {
@@ -235,7 +254,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
     }
   };
 
-  // Render Loop to Pixelate Image into Geometric Mosaic Shapes
+  // Render Loop for Multi-Layer Composition (Layer 1: Main Backdrop Image, Layer 2: Cutout Subject Geometric Mosaic)
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -247,24 +266,79 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    if (sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
-      const imgW = sourceImage.naturalWidth;
-      const imgH = sourceImage.naturalHeight;
-      const imgAspect = imgW / imgH;
+    // Studio Canvas Dark Background
+    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+    bgGrad.addColorStop(0, "#08080e");
+    bgGrad.addColorStop(1, "#12121c");
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Studio Grid Accent Lines
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+    ctx.lineWidth = 1;
+    const bgStep = 40;
+    for (let x = 0; x < w; x += bgStep) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += bgStep) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // LAYER 1: Render Main Background Image
+    if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
+      const bgW = bgImage.naturalWidth;
+      const bgH = bgImage.naturalHeight;
+      const bgAspect = bgW / bgH;
 
       const maxW = w * 0.92;
       const maxH = h * 0.92;
 
-      let drawW = maxW;
-      let drawH = maxW / imgAspect;
+      let bgDrawW = maxW;
+      let bgDrawH = maxW / bgAspect;
 
-      if (drawH > maxH) {
-        drawH = maxH;
-        drawW = maxH * imgAspect;
+      if (bgDrawH > maxH) {
+        bgDrawH = maxH;
+        bgDrawW = maxH * bgAspect;
       }
 
-      const drawX = (w - drawW) / 2;
-      const drawY = (h - drawH) / 2;
+      const bgDrawX = (w - bgDrawW) / 2;
+      const bgDrawY = (h - bgDrawH) / 2;
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetY = 15;
+      ctx.drawImage(bgImage, bgDrawX, bgDrawY, bgDrawW, bgDrawH);
+      ctx.restore();
+    }
+
+    // LAYER 2: Render Cutout Subject Geometric Shape Mosaic
+    if (subjectImage && subjectImage.complete && subjectImage.naturalWidth > 0) {
+      const imgW = subjectImage.naturalWidth;
+      const imgH = subjectImage.naturalHeight;
+      const imgAspect = imgW / imgH;
+
+      const maxW = w * 0.85;
+      const maxH = h * 0.85;
+
+      let subDrawW = maxW;
+      let subDrawH = maxW / imgAspect;
+
+      if (subDrawH > maxH) {
+        subDrawH = maxH;
+        subDrawW = maxH * imgAspect;
+      }
+
+      const finalW = subDrawW * subjectScale;
+      const finalH = subDrawH * subjectScale;
+      const finalX = (w - finalW) / 2 + subjectPosX;
+      const finalY = (h - finalH) / 2 + subjectPosY;
 
       // Offscreen canvas for alpha transparent pixel color sampling
       const offCanvas = document.createElement("canvas");
@@ -273,7 +347,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       const offCtx = offCanvas.getContext("2d");
 
       if (offCtx) {
-        offCtx.drawImage(sourceImage, 0, 0);
+        offCtx.drawImage(subjectImage, 0, 0);
         const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
 
         const baseStep = Math.max(4, tileSize);
@@ -282,12 +356,12 @@ export const ShapeMosaicGenerator: React.FC = () => {
         const effectiveShapeSize = baseStep * shapeScale;
         const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
 
-        // Loop through image bounds step-by-step with independent X/Y gaps
-        for (let y = 0; y < drawH; y += stepY) {
-          for (let x = 0; x < drawW; x += stepX) {
+        // Loop through subject bounds step-by-step with independent X/Y gaps
+        for (let y = 0; y < finalH; y += stepY) {
+          for (let x = 0; x < finalW; x += stepX) {
             // Map cell center to source image pixel coordinates
-            const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / drawW) * imgW));
-            const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / drawH) * imgH));
+            const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / finalW) * imgW));
+            const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / finalH) * imgH));
 
             const idx = (sampleY * imgW + sampleX) * 4;
             const rVal = imgData[idx];
@@ -303,8 +377,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
             if (isTransparent || isCheckerboard) continue;
 
-            const cx = drawX + x + baseStep / 2;
-            const cy = drawY + y + baseStep / 2;
+            const cx = finalX + x + baseStep / 2;
+            const cy = finalY + y + baseStep / 2;
 
             let fill = `rgb(${rVal}, ${gVal}, ${bVal})`;
             if (colorMode === "solid") {
@@ -324,13 +398,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
           }
         }
       }
-    } else {
-      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-      ctx.font = '600 16px "Space Mono", monospace';
-      ctx.textAlign = "center";
-      ctx.fillText("UPLOAD AN IMAGE TO BEGIN SHAPE MOSAIC CREATION", w / 2, h / 2);
     }
-  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY, colorMode, customColor, tintRatio, bgThreshold]);
+  }, [bgImage, subjectImage, subjectPosX, subjectPosY, subjectScale, selectedShape, tileSize, shapeScale, gapX, gapY, colorMode, customColor, tintRatio, bgThreshold]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -348,13 +417,77 @@ export const ShapeMosaicGenerator: React.FC = () => {
         <div className={styles.brandTitle}>IMG300</div>
         <div className={styles.brandSubtitle}>Shape Mosaic Studio</div>
 
-        {/* Image Upload Component */}
+        {/* LAYER 1: Main Background Image */}
+        <div className={styles.sectionHeader}>
+          <span>Layer 1 • Main Background Image</span>
+        </div>
+
         <ImageUploader
-          hasImage={!!sourceImage}
-          onUploadImage={handleUploadImage}
+          hasImage={!!bgImage}
+          onUploadImage={handleUploadBgImage}
         />
 
-        {/* 1. Shape Selection */}
+        {/* LAYER 2: Cutout Subject Image */}
+        <div className={styles.sectionHeader} style={{ marginTop: 16 }}>
+          <span>Layer 2 • Cutout Subject Image</span>
+        </div>
+
+        <ImageUploader
+          hasImage={!!subjectImage}
+          onUploadImage={handleUploadSubjectImage}
+        />
+
+        {/* Layer 2 Position & Scaling Transforms */}
+        {subjectImage && (
+          <>
+            <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
+              <div className={styles.controlHeader}>
+                <span className={styles.controlLabel}>Cutout Position X</span>
+                <span className={styles.controlValue}>{subjectPosX}px</span>
+              </div>
+              <input
+                type="range"
+                min={-500}
+                max={500}
+                step={5}
+                value={subjectPosX}
+                onChange={(e) => setSubjectPosX(parseInt(e.target.value))}
+              />
+            </div>
+
+            <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
+              <div className={styles.controlHeader}>
+                <span className={styles.controlLabel}>Cutout Position Y</span>
+                <span className={styles.controlValue}>{subjectPosY}px</span>
+              </div>
+              <input
+                type="range"
+                min={-500}
+                max={500}
+                step={5}
+                value={subjectPosY}
+                onChange={(e) => setSubjectPosY(parseInt(e.target.value))}
+              />
+            </div>
+
+            <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+              <div className={styles.controlHeader}>
+                <span className={styles.controlLabel}>Cutout Subject Size</span>
+                <span className={styles.controlValue}>{Math.round(subjectScale * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0.2}
+                max={2.0}
+                step={0.05}
+                value={subjectScale}
+                onChange={(e) => setSubjectScale(parseFloat(e.target.value))}
+              />
+            </div>
+          </>
+        )}
+
+        {/* 3. Shape Selection */}
         <div className={styles.sectionHeader}>
           <span>Mosaic Shape Unit</span>
         </div>
@@ -389,7 +522,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Shape Color & Tint Controls */}
+        {/* 4. Shape Color & Tint Controls */}
         <div className={styles.sectionHeader}>
           <span>Shape Color &amp; Tint</span>
         </div>
@@ -469,7 +602,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
               </div>
             </div>
 
-            {/* Tint Blend Ratio Slider (Active in Tint Mode) */}
+            {/* Tint Blend Ratio Slider */}
             {colorMode === "tint" && (
               <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
                 <div className={styles.controlHeader}>
@@ -489,7 +622,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </>
         )}
 
-        {/* 3. Checkerboard Background Cutout Filter Sensitivity */}
+        {/* 5. Checkerboard Background Cutout Filter Sensitivity */}
         <div className={styles.sectionHeader}>
           <span>Checkerboard Cutout Filter</span>
         </div>
@@ -509,7 +642,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
           />
         </div>
 
-        {/* 4. Mosaic Resolution & Spacing */}
+        {/* 6. Mosaic Resolution & Spacing */}
         <div className={styles.sectionHeader}>
           <span>Mosaic Resolution &amp; Spacing</span>
         </div>
@@ -588,7 +721,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       {/* Main Viewport */}
       <div className={styles.canvasViewport} ref={containerRef}>
         <div className={styles.canvasWrapper} style={{ position: "relative" }}>
-          {/* Real-time Canvas with Transparent Pattern Background */}
+          {/* Real-time Canvas */}
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
@@ -596,17 +729,13 @@ export const ShapeMosaicGenerator: React.FC = () => {
               maxWidth: "100%",
               maxHeight: "100%",
               borderRadius: "8px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
-              backgroundImage: "linear-gradient(45deg, #141420 25%, transparent 25%), linear-gradient(-45deg, #141420 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #141420 75%), linear-gradient(-45deg, transparent 75%, #141420 75%)",
-              backgroundSize: "24px 24px",
-              backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0px",
-              backgroundColor: "#08080e"
+              boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
             }}
           />
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Shape Mosaic Studio ({selectedShape.toUpperCase()} Unit • {tileSize}px Tile Size)
+          IMG300 Studio • Shape Mosaic Studio ({selectedShape.toUpperCase()} Unit • Dual-Layer Composition)
         </div>
       </div>
     </div>
