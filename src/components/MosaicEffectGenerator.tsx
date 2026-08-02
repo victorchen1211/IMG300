@@ -230,61 +230,123 @@ export const MosaicEffectGenerator: React.FC = () => {
       });
     }
 
-    // 3. Render Directional Cutout Mirror Extension for Selected Tiles
-    if (isEffectEnabled && mirrorDirection !== "none" && selectedTiles.size > 0) {
-      selectedTiles.forEach((tileKey) => {
-        const [rStr, cStr] = tileKey.split(",");
-        const r = parseInt(rStr, 10);
-        const c = parseInt(cStr, 10);
+    // 3. Render Directional Full Image Mirror Extension & Cutout Overlays
+    if (isEffectEnabled && mirrorDirection !== "none") {
+      let mirrorStartX = drawX;
+      let mirrorStartY = drawY;
+      let mirrorCenterX = drawX + drawW / 2;
+      let mirrorCenterY = drawY + drawH / 2;
+      let mScaleX = 1;
+      let mScaleY = 1;
 
-        if (r < numRows && c < numCols) {
-          const destTileX = drawX + c * tileW_Canvas;
-          const destTileY = drawY + r * tileH_Canvas;
-          const srcTileX = c * tileW_Img;
-          const srcTileY = r * tileH_Img;
+      if (mirrorDirection === "up") {
+        mirrorStartY = drawY - drawH;
+        mirrorCenterY = drawY - drawH / 2;
+        mScaleY = -1;
+      } else if (mirrorDirection === "down") {
+        mirrorStartY = drawY + drawH;
+        mirrorCenterY = drawY + drawH + drawH / 2;
+        mScaleY = -1;
+      } else if (mirrorDirection === "left") {
+        mirrorStartX = drawX - drawW;
+        mirrorCenterX = drawX - drawW / 2;
+        mScaleX = -1;
+      } else if (mirrorDirection === "right") {
+        mirrorStartX = drawX + drawW;
+        mirrorCenterX = drawX + drawW + drawW / 2;
+        mScaleX = -1;
+      }
 
-          let targetX = destTileX;
-          let targetY = destTileY;
-          let scaleX = 1;
-          let scaleY = 1;
+      // 3A. Draw Full Mirrored Duplicate Image
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+      ctx.shadowBlur = 30;
+      ctx.shadowOffsetY = 10;
+      ctx.translate(mirrorCenterX, mirrorCenterY);
+      ctx.scale(mScaleX, mScaleY);
+      ctx.drawImage(sourceImage, -drawW / 2, -drawH / 2, drawW, drawH);
+      ctx.restore();
 
-          if (mirrorDirection === "up") {
-            targetY = destTileY - tileH_Canvas;
-            scaleY = -1;
-          } else if (mirrorDirection === "down") {
-            targetY = destTileY + tileH_Canvas;
-            scaleY = -1;
-          } else if (mirrorDirection === "left") {
-            targetX = destTileX - tileW_Canvas;
-            scaleX = -1;
-          } else if (mirrorDirection === "right") {
-            targetX = destTileX + tileW_Canvas;
-            scaleX = -1;
+      // 3B. Overlay Cutouts / Effects onto Mirrored Duplicate
+      if (selectedTiles.size > 0) {
+        selectedTiles.forEach((tileKey) => {
+          const [rStr, cStr] = tileKey.split(",");
+          const r = parseInt(rStr, 10);
+          const c = parseInt(cStr, 10);
+
+          if (r < numRows && c < numCols) {
+            let targetTileX = drawX + c * tileW_Canvas;
+            let targetTileY = drawY + r * tileH_Canvas;
+
+            if (mirrorDirection === "up") {
+              targetTileY = drawY - drawH + (numRows - 1 - r) * tileH_Canvas;
+            } else if (mirrorDirection === "down") {
+              targetTileY = drawY + drawH + (numRows - 1 - r) * tileH_Canvas;
+            } else if (mirrorDirection === "left") {
+              targetTileX = drawX - drawW + (numCols - 1 - c) * tileW_Canvas;
+            } else if (mirrorDirection === "right") {
+              targetTileX = drawX + drawW + (numCols - 1 - c) * tileW_Canvas;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(targetTileX, targetTileY, tileW_Canvas, tileH_Canvas);
+            ctx.clip();
+
+            if (selectedEffectMode === "cutout") {
+              if (cutoutBgColor === "transparent") {
+                ctx.clearRect(targetTileX, targetTileY, tileW_Canvas, tileH_Canvas);
+              } else {
+                ctx.fillStyle = cutoutBgColor;
+                ctx.fillRect(targetTileX, targetTileY, tileW_Canvas, tileH_Canvas);
+              }
+            } else if (selectedEffectMode === "blur") {
+              ctx.save();
+              ctx.filter = `blur(${blurRadius}px)`;
+              ctx.translate(targetTileX + tileW_Canvas / 2, targetTileY + tileH_Canvas / 2);
+              ctx.scale(mScaleX, mScaleY);
+              ctx.drawImage(
+                sourceImage,
+                c * tileW_Img,
+                r * tileH_Img,
+                tileW_Img,
+                tileH_Img,
+                -tileW_Canvas / 2,
+                -tileH_Canvas / 2,
+                tileW_Canvas,
+                tileH_Canvas
+              );
+              ctx.restore();
+            } else if (selectedEffectMode === "invert") {
+              ctx.save();
+              ctx.translate(targetTileX + tileW_Canvas / 2, targetTileY + tileH_Canvas / 2);
+              ctx.scale(mScaleX, mScaleY);
+              ctx.drawImage(
+                sourceImage,
+                c * tileW_Img,
+                r * tileH_Img,
+                tileW_Img,
+                tileH_Img,
+                -tileW_Canvas / 2,
+                -tileH_Canvas / 2,
+                tileW_Canvas,
+                tileH_Canvas
+              );
+              ctx.restore();
+              const tileImgData = ctx.getImageData(targetTileX, targetTileY, tileW_Canvas, tileH_Canvas);
+              const d = tileImgData.data;
+              for (let i = 0; i < d.length; i += 4) {
+                d[i] = 255 - d[i];
+                d[i + 1] = 255 - d[i + 1];
+                d[i + 2] = 255 - d[i + 2];
+              }
+              ctx.putImageData(tileImgData, targetTileX, targetTileY);
+            }
+
+            ctx.restore();
           }
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(targetX, targetY, tileW_Canvas, tileH_Canvas);
-          ctx.clip();
-
-          ctx.translate(targetX + tileW_Canvas / 2, targetY + tileH_Canvas / 2);
-          ctx.scale(scaleX, scaleY);
-
-          ctx.drawImage(
-            sourceImage,
-            srcTileX,
-            srcTileY,
-            tileW_Img,
-            tileH_Img,
-            -tileW_Canvas / 2,
-            -tileH_Canvas / 2,
-            tileW_Canvas,
-            tileH_Canvas
-          );
-
-          ctx.restore();
-        }
-      });
+        });
+      }
     }
 
     // 4. Render Reference Base Grid Lines & Selected Tile Highlight Frames
