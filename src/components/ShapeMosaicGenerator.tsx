@@ -5,6 +5,7 @@ import styles from "../app/page.module.scss";
 import { ImageUploader, ExportControls } from "./common";
 
 type ShapeType = "circle" | "square" | "triangle" | "cross" | "diamond" | "hexagon" | "star";
+type BgFilterMode = "transparent" | "white" | "dark";
 
 const SHAPE_OPTIONS: { id: ShapeType; label: string; icon: string }[] = [
   { id: "circle", label: "Circle", icon: "●" },
@@ -23,20 +24,24 @@ export const ShapeMosaicGenerator: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
 
   // Shape Mosaic Control States
-  const [selectedShape, setSelectedShape] = useState<ShapeType>("circle");
+  const [selectedShape, setSelectedShape] = useState<ShapeType>("cross");
   const [tileSize, setTileSize] = useState<number>(18); // Tile Grid Step (6px to 60px)
   const [shapeScale, setShapeScale] = useState<number>(0.85); // Shape Size Scale (0.4 to 1.2)
   const [gapX, setGapX] = useState<number>(0); // Horizontal Gap Distance (0px to 40px)
   const [gapY, setGapY] = useState<number>(0); // Vertical Gap Distance (0px to 40px)
 
-  // Load default sample transparent PNG/image on mount
+  // Smart Background Filtering (Remove background, keep only center cutout subject)
+  const [bgFilterMode, setBgFilterMode] = useState<BgFilterMode>("transparent");
+  const [bgThreshold, setBgThreshold] = useState<number>(230); // Brightness threshold for white/dark filter
+
+  // Load default sample transparent PNG cutout on mount
   useEffect(() => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
       setSourceImage(img);
     };
-    img.src = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=1200&q=80";
+    img.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png";
   }, []);
 
   // Handle Image Upload
@@ -107,7 +112,11 @@ export const ShapeMosaicGenerator: React.FC = () => {
         const bVal = imgData[idx + 2];
         const aVal = imgData[idx + 3];
 
-        if (aVal < 20) continue;
+        const isTransparent = aVal < 30;
+        const isWhiteBg = bgFilterMode === "white" && rVal >= bgThreshold && gVal >= bgThreshold && bVal >= bgThreshold;
+        const isDarkBg = bgFilterMode === "dark" && rVal <= (255 - bgThreshold) && gVal <= (255 - bgThreshold) && bVal <= (255 - bgThreshold);
+
+        if (isTransparent || isWhiteBg || isDarkBg) continue;
 
         const cx = drawX + x + baseStep / 2;
         const cy = drawY + y + baseStep / 2;
@@ -246,8 +255,12 @@ export const ShapeMosaicGenerator: React.FC = () => {
             const bVal = imgData[idx + 2];
             const aVal = imgData[idx + 3];
 
-            // Skip transparent PNG background pixels
-            if (aVal < 20) continue;
+            // Background filtering checks: skip background pixels to keep ONLY center cutout subject
+            const isTransparent = aVal < 30;
+            const isWhiteBg = bgFilterMode === "white" && rVal >= bgThreshold && gVal >= bgThreshold && bVal >= bgThreshold;
+            const isDarkBg = bgFilterMode === "dark" && rVal <= (255 - bgThreshold) && gVal <= (255 - bgThreshold) && bVal <= (255 - bgThreshold);
+
+            if (isTransparent || isWhiteBg || isDarkBg) continue;
 
             const cx = drawX + x + baseStep / 2;
             const cy = drawY + y + baseStep / 2;
@@ -266,7 +279,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN SHAPE MOSAIC CREATION", w / 2, h / 2);
     }
-  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY]);
+  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY, bgFilterMode, bgThreshold]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -327,7 +340,59 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Mosaic Resolution & Spacing */}
+        {/* 2. Background Filtering Controls (Keep ONLY Center Cutout Subject) */}
+        <div className={styles.sectionHeader}>
+          <span>Background Cutout Filter</span>
+        </div>
+
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
+            <span className={styles.controlLabel}>Filter Background</span>
+            <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{bgFilterMode}</span>
+          </div>
+          <div style={{ display: "flex", gap: "6px" }}>
+            {(["transparent", "white", "dark"] as const).map((mode) => (
+              <button
+                key={mode}
+                style={{
+                  flex: 1,
+                  padding: "8px 4px",
+                  fontSize: "11px",
+                  fontWeight: bgFilterMode === mode ? 800 : 700,
+                  textTransform: "capitalize",
+                  background: bgFilterMode === mode ? "#000000" : "#ffffff",
+                  border: "2px solid #000000",
+                  color: bgFilterMode === mode ? "#ffffff" : "#000000",
+                  borderRadius: "6px",
+                  cursor: "pointer"
+                }}
+                onClick={() => setBgFilterMode(mode)}
+              >
+                {mode === "transparent" ? "Alpha PNG" : mode === "white" ? "Cut White" : "Cut Dark"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Background Filter Threshold Slider (Active when white or dark filter is selected) */}
+        {bgFilterMode !== "transparent" && (
+          <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+            <div className={styles.controlHeader}>
+              <span className={styles.controlLabel}>Cutout Threshold</span>
+              <span className={styles.controlValue}>{bgThreshold}</span>
+            </div>
+            <input
+              type="range"
+              min={180}
+              max={254}
+              step={1}
+              value={bgThreshold}
+              onChange={(e) => setBgThreshold(parseInt(e.target.value))}
+            />
+          </div>
+        )}
+
+        {/* 3. Mosaic Resolution & Spacing */}
         <div className={styles.sectionHeader}>
           <span>Mosaic Resolution &amp; Spacing</span>
         </div>
