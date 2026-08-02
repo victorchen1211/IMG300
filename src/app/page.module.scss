@@ -1,22 +1,71 @@
 .appContainer {
   display: flex;
-  flex-direction: row-reverse;
+  flex-direction: row;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background: #f6f5f3;
+  background: #f0f2f5;
   position: relative;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+  }
 }
 
 .sidebar {
-  width: 280px;
-  padding: 28px 22px;
-  border-left: 1px solid #e4e2de;
-  background: #faf9f7;
+  width: 320px;
+  max-width: 320px;
+  background: #ffffff;
+  color: #111111;
+  border-radius: 16px;
+  margin: 16px;
+  padding: 20px;
+  height: calc(100vh - 32px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  z-index: 100;
+
+  @media (max-width: 1024px) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    height: auto;
+    max-height: 60vh;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    padding: 12px 20px 28px;
+  }
+}
+
+.dragHandleBar {
+  display: none;
+  width: 100%;
+  padding: 4px 0 12px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  @media (max-width: 1024px) {
+    display: flex;
+  }
+}
+
+.dragHandlePill {
+  width: 36px;
+  height: 5px;
+  background: #d1d5db;
+  border-radius: 3px;
 }
 
 .brandTitle {
@@ -93,6 +142,11 @@
   overflow: hidden;
   position: relative;
   box-sizing: border-box;
+
+  @media (max-width: 1024px) {
+    height: 100vh;
+    padding: 20px 20px 240px 20px;
+  }
 }
 
 .canvasWrapper {

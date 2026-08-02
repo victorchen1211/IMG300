@@ -402,20 +402,12 @@ export const MosaicEffectGenerator: React.FC = () => {
 
   return (
     <div className={styles.appContainer} style={{ background: "#f0f2f5", minHeight: "100vh" }}>
-      {/* Brik.space Floating White Card Sidebar */}
-      <div
-        className={styles.sidebar}
-        style={{
-          background: "#ffffff",
-          color: "#111111",
-          borderRadius: "16px",
-          margin: "16px",
-          height: "calc(100vh - 32px)",
-          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.08)",
-          border: "1px solid #e2e8f0",
-          overflowY: "auto"
-        }}
-      >
+      {/* Brik.space Floating White Card Sidebar / Mobile Bottom Sheet */}
+      <div className={styles.sidebar}>
+        {/* Mobile Bottom Sheet Handle Pill Bar */}
+        <div className={styles.dragHandleBar}>
+          <div className={styles.dragHandlePill} />
+        </div>
         {/* Brik.space Header with Reset Button */}
         <div
           style={{
