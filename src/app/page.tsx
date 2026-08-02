@@ -6,16 +6,6 @@ import { GalleryCard, CardData } from "../components/GalleryCard";
 
 const CARDS: CardData[] = [
   {
-    id: "glass-effect",
-    title: "Glass Effect",
-    author: "Created By Victor Chen",
-    href: "/glass-effect",
-    image: "/thumbnails/glass-effect.png",
-    likes: 8,
-    remixes: 230,
-    shares: 6
-  },
-  {
     id: "mosaic-effect",
     title: "Mosaic Effect",
     author: "Created By Victor Chen",
