@@ -206,10 +206,12 @@
 
 .visuHomeRoot {
   min-height: 100vh;
+  height: auto;
   background: #f3f4f6;
   color: #111111;
   font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .visuTopBar {
