@@ -25,7 +25,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
   // Shape Mosaic Control States
   const [selectedShape, setSelectedShape] = useState<ShapeType>("circle");
   const [tileSize, setTileSize] = useState<number>(18); // Tile Grid Step (6px to 60px)
-  const [shapeScale, setShapeScale] = useState<number>(0.85); // Shape Size Scale (0.4 to 1.0)
+  const [shapeScale, setShapeScale] = useState<number>(0.85); // Shape Size Scale (0.4 to 1.2)
+  const [gapX, setGapX] = useState<number>(0); // Horizontal Gap Distance (0px to 40px)
+  const [gapY, setGapY] = useState<number>(0); // Vertical Gap Distance (0px to 40px)
   const [showBaseImage, setShowBaseImage] = useState<boolean>(false); // Overlay original underneath
 
   // Load default sample transparent PNG/image on mount
@@ -170,15 +172,17 @@ export const ShapeMosaicGenerator: React.FC = () => {
           ctx.restore();
         }
 
-        const step = Math.max(4, tileSize);
-        const effectiveShapeSize = step * shapeScale;
+        const baseStep = Math.max(4, tileSize);
+        const stepX = baseStep + gapX;
+        const stepY = baseStep + gapY;
+        const effectiveShapeSize = baseStep * shapeScale;
 
-        // Loop through image bounds step-by-step
-        for (let y = 0; y < drawH; y += step) {
-          for (let x = 0; x < drawW; x += step) {
+        // Loop through image bounds step-by-step with independent X/Y gaps
+        for (let y = 0; y < drawH; y += stepY) {
+          for (let x = 0; x < drawW; x += stepX) {
             // Map cell center to source image pixel coordinates
-            const sampleX = Math.min(imgW - 1, Math.floor(((x + step / 2) / drawW) * imgW));
-            const sampleY = Math.min(imgH - 1, Math.floor(((y + step / 2) / drawH) * imgH));
+            const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / drawW) * imgW));
+            const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / drawH) * imgH));
 
             const idx = (sampleY * imgW + sampleX) * 4;
             const rVal = imgData[idx];
@@ -189,8 +193,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
             // Skip transparent PNG background pixels
             if (aVal < 20) continue;
 
-            const cx = drawX + x + step / 2;
-            const cy = drawY + y + step / 2;
+            const cx = drawX + x + baseStep / 2;
+            const cy = drawY + y + baseStep / 2;
 
             ctx.save();
             ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
@@ -206,7 +210,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN SHAPE MOSAIC CREATION", w / 2, h / 2);
     }
-  }, [sourceImage, selectedShape, tileSize, shapeScale, showBaseImage]);
+  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY, showBaseImage]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -267,9 +271,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Mosaic Resolution / Tile Size */}
+        {/* 2. Mosaic Resolution & Spacing */}
         <div className={styles.sectionHeader}>
-          <span>Mosaic Resolution &amp; Scaling</span>
+          <span>Mosaic Resolution &amp; Spacing</span>
         </div>
 
         {/* Tile Size Slider */}
@@ -285,6 +289,38 @@ export const ShapeMosaicGenerator: React.FC = () => {
             step={2}
             value={tileSize}
             onChange={(e) => setTileSize(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* Horizontal Spacing Slider (Gap X) */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Horizontal Distance (Gap X)</span>
+            <span className={styles.controlValue}>{gapX}px</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={40}
+            step={1}
+            value={gapX}
+            onChange={(e) => setGapX(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* Vertical Spacing Slider (Gap Y) */}
+        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+          <div className={styles.controlHeader}>
+            <span className={styles.controlLabel}>Vertical Distance (Gap Y)</span>
+            <span className={styles.controlValue}>{gapY}px</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={40}
+            step={1}
+            value={gapY}
+            onChange={(e) => setGapY(parseInt(e.target.value))}
           />
         </div>
 
