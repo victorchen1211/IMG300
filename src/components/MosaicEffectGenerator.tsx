@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
-import { ImageUploader, BrikSliderControl, BrikAccordionSection, CanvasViewport, ColorPickerControl } from "./common";
+import { ImageUploader, BrikSliderControl, BrikAccordionSection, CanvasViewport, ColorPickerControl, ExportControls } from "./common";
 
 // Preset Color Swatches for Cutout Background
 const CUTOUT_BG_COLORS = [
@@ -709,13 +709,37 @@ export const MosaicEffectGenerator: React.FC = () => {
                   step={2}
                   valueDisplay={`${blurRadius}px`}
                   onChange={setBlurRadius}
-                  marginBottom={10}
                 />
               )}
             </>
           )}
         </BrikAccordionSection>
 
+        {/* Shared Export Controls Component */}
+        <div style={{ marginTop: 16 }}>
+          <ExportControls
+            onExportPNG={() => {
+              const canvas = canvasRef.current;
+              if (!canvas) return;
+              const link = document.createElement("a");
+              link.download = `IMG300-mosaic-effect-${Date.now()}.png`;
+              link.href = canvas.toDataURL("image/png");
+              link.click();
+            }}
+            onExportSVG={() => {
+              const canvas = canvasRef.current;
+              if (!canvas) return;
+              const link = document.createElement("a");
+              link.download = `IMG300-mosaic-effect-${Date.now()}.svg`;
+              const svgHeader = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">`;
+              const svgImage = `<image href="${canvas.toDataURL("image/png")}" width="${canvas.width}" height="${canvas.height}"/>`;
+              const svgFooter = `</svg>`;
+              const blob = new Blob([svgHeader + svgImage + svgFooter], { type: "image/svg+xml" });
+              link.href = URL.createObjectURL(blob);
+              link.click();
+            }}
+          />
+        </div>
       </div>
 
       {/* Shared Canvas Viewport Component */}
