@@ -362,19 +362,11 @@ export const MosaicEffectGenerator: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      let targetW = 1600;
-      let targetH = 1000;
-
-      if (sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
-        targetW = sourceImage.naturalWidth;
-        targetH = sourceImage.naturalHeight;
-      }
-
-      canvas.width = targetW;
-      canvas.height = targetH;
+      canvas.width = 1920;
+      canvas.height = 1080;
     }
     renderCanvas();
-  }, [sourceImage, renderCanvas]);
+  }, [renderCanvas]);
 
   // Canvas Click Handler to Toggle Square Tile Selection
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

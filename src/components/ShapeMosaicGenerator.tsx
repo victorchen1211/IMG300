@@ -316,22 +316,11 @@ export const ShapeMosaicGenerator: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas) {
-      let targetW = 1600;
-      let targetH = 1000;
-
-      if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
-        targetW = bgImage.naturalWidth;
-        targetH = bgImage.naturalHeight;
-      } else if (subjectImage && subjectImage.complete && subjectImage.naturalWidth > 0) {
-        targetW = subjectImage.naturalWidth;
-        targetH = subjectImage.naturalHeight;
-      }
-
-      canvas.width = targetW;
-      canvas.height = targetH;
+      canvas.width = 1920;
+      canvas.height = 1080;
     }
     renderCanvas();
-  }, [bgImage, subjectImage, renderCanvas]);
+  }, [renderCanvas]);
 
   return (
     <div className={styles.appContainer} style={{ background: "#f0f2f5", minHeight: "100vh" }}>
