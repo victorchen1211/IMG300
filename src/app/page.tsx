@@ -85,7 +85,7 @@ export default function Home() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 50) {
+      if (window.scrollY > 40) {
         setIsScrolled(true);
       } else {
         setIsScrolled(false);
@@ -106,9 +106,9 @@ export default function Home() {
 
   return (
     <div className={styles.visuHomeRoot}>
-      {/* Visu.Haus Dynamic Sticky Header Bar */}
+      {/* Fixed Sticky Header Bar with Small #0000fe Logo and Pill Navigation */}
       <header className={`${styles.visuTopBar} ${isScrolled ? styles.scrolledTopBar : ""}`}>
-        {/* Sticky Mini Logo (Shown when scrolled) */}
+        {/* Sticky Small Stacked Logo (#0000fe) */}
         <div className={`${styles.stickyLogoWrap} ${isScrolled ? styles.visibleStickyLogo : ""}`}>
           <div className={styles.stackedLogoMini}>
             <span>IMG</span>
@@ -116,8 +116,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right Navigation Dock */}
-        <div className={styles.visuTopBarRightDock}>
+        {/* Floating White Pill Menu / Action Bar (Matching Screenshot) */}
+        <div className={styles.visuFloatingPillDock}>
           <nav className={styles.visuPrimaryNavInline}>
             <button className={styles.visuNavItemLink}>Create</button>
             <button className={styles.visuNavItemLink}>Gallery</button>
@@ -137,11 +137,11 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero Section with Giant Stacked Logo (#0000fe) */}
+      {/* Main Content Area with Giant Hero Logo */}
       <main className={styles.visuMainContent}>
         <section className={styles.visuHeroHeader}>
-          {/* Giant 2-Line Stacked Logo: IMG / 300 */}
-          <div className={`${styles.stackedLogoHero} ${isScrolled ? styles.hiddenHeroLogo : ""}`}>
+          {/* Giant 2-Line Stacked Logo: IMG / 300 in #0000fe */}
+          <div className={styles.stackedLogoHero}>
             <h1 className={styles.heroLogoText}>
               <span className={styles.heroLine1}>IMG</span>
               <span className={styles.heroLine2}>300</span>
