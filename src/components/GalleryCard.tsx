@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styles from "../app/page.module.scss";
@@ -24,11 +24,25 @@ interface GalleryCardProps {
 }
 
 export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
+  const [aspect, setAspect] = useState<string>(card.aspectRatio || "0.75");
+  const [isLandscape, setIsLandscape] = useState<boolean>(false);
+
+  const handleImageLoad = (img: HTMLImageElement) => {
+    if (img.naturalWidth && img.naturalHeight) {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      // If width > height, automatically switch to dynamic landscape aspect ratio!
+      setAspect(`${img.naturalWidth} / ${img.naturalHeight}`);
+      if (ratio > 1.15) {
+        setIsLandscape(true);
+      }
+    }
+  };
+
   const cardInner = (
-    <div className={styles.visuCard}>
+    <div className={`${styles.visuCard} ${isLandscape ? styles.landscapeCard : ""}`}>
       <div
         className={styles.visuCardMedia}
-        style={{ aspectRatio: card.aspectRatio || "0.75" }}
+        style={{ aspectRatio: aspect }}
       >
         <Image
           src={card.image}
@@ -36,6 +50,7 @@ export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
           width={600}
           height={800}
           className={styles.visuCardImage}
+          onLoadingComplete={handleImageLoad}
           unoptimized
         />
         
