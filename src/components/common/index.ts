@@ -8,3 +8,5 @@ export { RangeSliderControl } from "./RangeSliderControl";
 export { ColorPickerControl, DEFAULT_PRESET_COLORS } from "./ColorPickerControl";
 export type { ColorPreset } from "./ColorPickerControl";
 export { AccordionSection } from "./AccordionSection";
+export { BrikSliderControl } from "./BrikSliderControl";
+export { BrikAccordionSection } from "./BrikAccordionSection";

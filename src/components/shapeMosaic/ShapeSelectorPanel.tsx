@@ -3,6 +3,7 @@
 import React from "react";
 import styles from "../../app/page.module.scss";
 import { ShapeType, SHAPE_OPTIONS } from "./shapeVectorMath";
+import { BrikAccordionSection } from "../common";
 
 interface ShapeSelectorPanelProps {
   selectedShape: ShapeType;
@@ -14,12 +15,8 @@ export const ShapeSelectorPanel: React.FC<ShapeSelectorPanelProps> = ({
   onSelectShape
 }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Mosaic Shape Unit</span>
-      </div>
-
-      <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+    <BrikAccordionSection title="Mosaic Shape Unit" defaultOpen={true}>
+      <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
         <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
           <span className={styles.controlLabel}>Select Shape</span>
           <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
@@ -50,6 +47,6 @@ export const ShapeSelectorPanel: React.FC<ShapeSelectorPanelProps> = ({
           ))}
         </div>
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };
