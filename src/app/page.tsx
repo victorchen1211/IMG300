@@ -81,8 +81,6 @@ export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -110,10 +108,7 @@ export default function Home() {
   const categories = ["All", "Grid & Cutout Matrix", "Typography Geometry", "Generative Shaders", "Orthographic WebGL"];
 
   const filteredCards = CARDS.filter((card) => {
-    const matchesCategory = activeCategory === "All" || card.category === activeCategory;
-    const matchesSearch = card.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (card.category || "").toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    return activeCategory === "All" || card.category === activeCategory;
   });
 
   const scale = isMobile ? 1 - scrollProgress * 0.72 : 1 - scrollProgress * 0.81;
@@ -139,7 +134,7 @@ export default function Home() {
 
       {/* Fixed Sticky Top Header Bar */}
       <header className={`${styles.visuTopBar} ${scrollProgress > 0.4 ? styles.scrolledTopBar : ""}`}>
-        {/* Floating White Pill Menu Dock (Desktop Links vs Mobile Hamburger ≡) */}
+        {/* Floating White Pill Menu Dock */}
         <div className={styles.visuFloatingPillDock}>
           {!isMobile ? (
             <nav className={styles.visuPrimaryNavInline}>
@@ -149,36 +144,46 @@ export default function Home() {
             </nav>
           ) : (
             <button
-              className={styles.visuHamburgerBtn}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={styles.visuTwoLinesBtn}
+              onClick={() => setIsMobileMenuOpen(true)}
               aria-label="Open mobile menu"
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="20" height="20">
-                <line x1="4" y1="8" x2="20" y2="8" />
-                <line x1="4" y1="16" x2="20" y2="16" />
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="18" height="18">
+                <line x1="4" y1="9" x2="20" y2="9" />
+                <line x1="4" y1="15" x2="20" y2="15" />
               </svg>
             </button>
           )}
-
-          <button
-            className={styles.visuSearchIconBtn}
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-            aria-label="Search generators"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="18" height="18">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </button>
         </div>
       </header>
 
-      {/* Mobile Popover Dropdown Menu */}
+      {/* Full-Screen Red Mobile Navigation Menu (Matching Screenshot) */}
       {isMobile && isMobileMenuOpen && (
-        <div className={styles.visuMobileNavMenu}>
-          <button className={styles.visuMobileMenuItem}>Create</button>
-          <button className={styles.visuMobileMenuItem}>Gallery</button>
-          <button className={styles.visuMobileMenuItem}>Sign in</button>
+        <div className={styles.fullScreenRedMenu}>
+          {/* Top Right Close Button Pill */}
+          <button
+            className={styles.redMenuCloseBtn}
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+
+          {/* Large Stacked Nav Links */}
+          <div className={styles.redMenuContent}>
+            <button className={styles.redMenuItem} onClick={() => setIsMobileMenuOpen(false)}>
+              Create
+            </button>
+            <button className={styles.redMenuItem} onClick={() => setIsMobileMenuOpen(false)}>
+              Gallery
+            </button>
+            <button className={styles.redMenuItem} onClick={() => setIsMobileMenuOpen(false)}>
+              Sign in
+            </button>
+          </div>
         </div>
       )}
 
@@ -195,20 +200,6 @@ export default function Home() {
             </p>
           </div>
         </section>
-
-        {/* Expandable Search Input Bar */}
-        {isSearchOpen && (
-          <div className={styles.visuSearchExpandBar}>
-            <input
-              type="text"
-              placeholder="Search tools &amp; generators..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={styles.visuSearchExpandInput}
-              autoFocus
-            />
-          </div>
-        )}
 
         {/* Category Filter Pills */}
         <div className={styles.visuFilterBar}>
