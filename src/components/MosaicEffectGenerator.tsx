@@ -43,6 +43,7 @@ export const MosaicEffectGenerator: React.FC = () => {
   const [cutoutBgColor, setCutoutBgColor] = useState<string>("#0a0a0f"); // Cutout Background Color
   const [mosaicBlockSize, setMosaicBlockSize] = useState<number>(14); // Mosaic Resolution (4px ~ 40px)
   const [blurRadius, setBlurRadius] = useState<number>(10); // Blur Radius (4px ~ 24px)
+  const [isMobileCollapsed, setIsMobileCollapsed] = useState<boolean>(false); // Mobile Drawer Collapse State
 
   // Load default sample image on mount
   useEffect(() => {
@@ -403,10 +404,14 @@ export const MosaicEffectGenerator: React.FC = () => {
   return (
     <div className={styles.appContainer} style={{ background: "#f0f2f5", minHeight: "100vh" }}>
       {/* Brik.space Floating White Card Sidebar / Mobile Bottom Sheet */}
-      <div className={styles.sidebar}>
+      <div className={`${styles.sidebar} ${isMobileCollapsed ? styles.collapsed : ""}`}>
         {/* Mobile Bottom Sheet Handle Pill Bar */}
-        <div className={styles.dragHandleBar}>
+        <div
+          className={styles.dragHandleBar}
+          onClick={() => setIsMobileCollapsed(!isMobileCollapsed)}
+        >
           <div className={styles.dragHandlePill} />
+          <span className={styles.controlsHeaderTitle}>Controls</span>
         </div>
         {/* Brik.space Header with Reset Button */}
         <div
