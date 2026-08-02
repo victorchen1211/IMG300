@@ -88,13 +88,13 @@
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: #1a1a1a;
+  background: #f0f2f5;
   overflow: hidden;
   position: relative;
 }
 
 .canvasWrapper {
-  box-shadow: 0 4px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   line-height: 0;
 }
 
@@ -108,8 +108,8 @@
   bottom: 16px;
   right: 20px;
   font-family: "SF Mono", "Menlo", monospace;
-  font-size: 10px;
-  color: #666;
+  font-size: 11px;
+  color: #777777;
   line-height: 1.8;
   text-align: right;
   pointer-events: none;

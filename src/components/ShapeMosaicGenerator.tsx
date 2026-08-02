@@ -180,15 +180,15 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Studio Canvas Dark Background
+    // Studio Canvas Light Grey Background
     const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-    bgGrad.addColorStop(0, "#08080e");
-    bgGrad.addColorStop(1, "#12121c");
+    bgGrad.addColorStop(0, "#e8ecef");
+    bgGrad.addColorStop(1, "#f3f5f7");
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
 
     // Studio Grid Accent Lines
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.05)";
     ctx.lineWidth = 1;
     const bgStep = 40;
     for (let x = 0; x < w; x += bgStep) {
@@ -359,7 +359,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                 }}
               >
-                Shape Mosaic Studio
+                IMG300
               </span>
             </div>
             <div
@@ -557,7 +557,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
         </div>
 
         <div className={styles.canvasFooter}>
-          IMG300 Studio • Shape Mosaic Studio ({selectedShape.toUpperCase()} Unit • Dual-Layer Composition)
+          IMG300 Studio  ({selectedShape.toUpperCase()} Unit • Dual-Layer Composition)
         </div>
       </div>
     </div>
