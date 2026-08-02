@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
-import { ImageUploader } from "./common";
+import { ImageUploader, ExportControls } from "./common";
 
 type ShapeType = "circle" | "square" | "triangle" | "cross" | "diamond" | "hexagon" | "star";
 
@@ -42,6 +42,95 @@ export const ShapeMosaicGenerator: React.FC = () => {
   // Handle Image Upload
   const handleUploadImage = (img: HTMLImageElement) => {
     setSourceImage(img);
+  };
+
+  // Export PNG Handler (Preserves 100% transparent PNG output)
+  const handleExportPNG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `shape-mosaic-${selectedShape}-${Date.now()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  // Export SVG Handler (Generates vector geometric shape elements)
+  const handleExportSVG = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !sourceImage || !sourceImage.complete || sourceImage.naturalWidth === 0) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const imgW = sourceImage.naturalWidth;
+    const imgH = sourceImage.naturalHeight;
+    const imgAspect = imgW / imgH;
+
+    const maxW = w * 0.92;
+    const maxH = h * 0.92;
+
+    let drawW = maxW;
+    let drawH = maxW / imgAspect;
+
+    if (drawH > maxH) {
+      drawH = maxH;
+      drawW = maxH * imgAspect;
+    }
+
+    const drawX = (w - drawW) / 2;
+    const drawY = (h - drawH) / 2;
+
+    const offCanvas = document.createElement("canvas");
+    offCanvas.width = imgW;
+    offCanvas.height = imgH;
+    const offCtx = offCanvas.getContext("2d");
+    if (!offCtx) return;
+
+    offCtx.drawImage(sourceImage, 0, 0);
+    const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
+
+    const baseStep = Math.max(4, tileSize);
+    const stepX = baseStep + gapX;
+    const stepY = baseStep + gapY;
+    const effectiveShapeSize = baseStep * shapeScale;
+    const r = effectiveShapeSize / 2;
+
+    let svgElements = "";
+
+    for (let y = 0; y < drawH; y += stepY) {
+      for (let x = 0; x < drawW; x += stepX) {
+        const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / drawW) * imgW));
+        const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / drawH) * imgH));
+
+        const idx = (sampleY * imgW + sampleX) * 4;
+        const rVal = imgData[idx];
+        const gVal = imgData[idx + 1];
+        const bVal = imgData[idx + 2];
+        const aVal = imgData[idx + 3];
+
+        if (aVal < 20) continue;
+
+        const cx = drawX + x + baseStep / 2;
+        const cy = drawY + y + baseStep / 2;
+        const fill = `rgb(${rVal},${gVal},${bVal})`;
+
+        if (selectedShape === "circle") {
+          svgElements += `  <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" />\n`;
+        } else if (selectedShape === "square") {
+          svgElements += `  <rect x="${(cx - r).toFixed(1)}" y="${(cy - r).toFixed(1)}" width="${effectiveShapeSize.toFixed(1)}" height="${effectiveShapeSize.toFixed(1)}" fill="${fill}" />\n`;
+        } else {
+          svgElements += `  <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" />\n`;
+        }
+      }
+    }
+
+    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">\n${svgElements}</svg>`;
+    const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = `shape-mosaic-${selectedShape}-${Date.now()}.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   // Draw Specific Geometric Shape Path
@@ -306,6 +395,12 @@ export const ShapeMosaicGenerator: React.FC = () => {
             onChange={(e) => setShapeScale(parseFloat(e.target.value))}
           />
         </div>
+
+        {/* Shared Export Controls Component */}
+        <ExportControls
+          onExportPNG={handleExportPNG}
+          onExportSVG={handleExportSVG}
+        />
       </div>
 
       {/* Main Viewport */}
