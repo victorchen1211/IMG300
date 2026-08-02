@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
 import styles from "../app/page.module.scss";
-import { ImageUploader, TypographyControl, TextLayer } from "./common";
+import { ImageUploader, TypographyControl, TextLayer, CanvasViewport } from "./common";
 import {
   BaseGlassControl,
   StraightTwistControl,
@@ -801,23 +801,17 @@ export const GlassEffectGenerator: React.FC = () => {
         />
       </div>
 
-      {/* Canvas Viewport */}
-      <div className={styles.canvasViewport} ref={containerRef}>
-        <div className={styles.canvasWrapper}>
-          <canvas
-            ref={canvasRef}
-            className={styles.canvasElement}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            style={{ width: displayW, height: displayH, cursor: activeDrag ? "grabbing" : "move" }}
-          />
-        </div>
-        <div className={styles.canvasFooter}>
-          Tool created by Victor Chen
-        </div>
-      </div>
+      {/* Shared Canvas Viewport Component */}
+      <CanvasViewport
+        canvasRef={canvasRef}
+        containerRef={containerRef}
+        footerText="IMG300 Studio • Glass Effect Studio"
+        onMouseDownCanvas={handleMouseDown}
+        onMouseMoveCanvas={handleMouseMove}
+        onMouseUpCanvas={handleMouseUp}
+        onMouseLeaveCanvas={handleMouseUp}
+        cursor={activeDrag ? "grabbing" : "move"}
+      />
     </div>
   );
 };

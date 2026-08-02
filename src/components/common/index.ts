@@ -10,3 +10,4 @@ export type { ColorPreset } from "./ColorPickerControl";
 export { AccordionSection } from "./AccordionSection";
 export { BrikSliderControl } from "./BrikSliderControl";
 export { BrikAccordionSection } from "./BrikAccordionSection";
+export { CanvasViewport } from "./CanvasViewport";

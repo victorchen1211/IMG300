@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
-import { ImageUploader, BrikSliderControl, BrikAccordionSection } from "./common";
+import { ImageUploader, BrikSliderControl, BrikAccordionSection, CanvasViewport } from "./common";
 
 // Preset Color Swatches for Cutout Background
 const CUTOUT_BG_COLORS = [
@@ -788,28 +788,14 @@ export const MosaicEffectGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Viewport */}
-      <div className={styles.canvasViewport} ref={containerRef}>
-        <div className={styles.canvasWrapper} style={{ position: "relative" }}>
-          {/* Real-time Canvas */}
-          <canvas
-            ref={canvasRef}
-            className={styles.canvasElement}
-            onClick={handleCanvasClick}
-            style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
-              borderRadius: "12px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
-              cursor: "pointer"
-            }}
-          />
-        </div>
-
-        <div className={styles.canvasFooter}>
-          IMG300 Studio • Square Grid Matrix ({gridCount} Columns • {selectedTiles.size} Selected)
-        </div>
-      </div>
+      {/* Shared Canvas Viewport Component */}
+      <CanvasViewport
+        canvasRef={canvasRef}
+        containerRef={containerRef}
+        footerText={`IMG300 Studio • Square Grid Matrix (${gridCount} Columns • ${selectedTiles.size} Selected)`}
+        onClickCanvas={handleCanvasClick}
+        cursor="pointer"
+      />
     </div>
   );
 };

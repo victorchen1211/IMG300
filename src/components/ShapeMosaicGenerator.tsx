@@ -6,7 +6,8 @@ import {
   ImageUploader,
   ExportControls,
   BrikSliderControl,
-  BrikAccordionSection
+  BrikAccordionSection,
+  CanvasViewport
 } from "./common";
 import {
   ShapeType,
@@ -551,26 +552,12 @@ export const ShapeMosaicGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Viewport */}
-      <div className={styles.canvasViewport} ref={containerRef}>
-        <div className={styles.canvasWrapper} style={{ position: "relative" }}>
-          {/* Real-time Canvas */}
-          <canvas
-            ref={canvasRef}
-            className={styles.canvasElement}
-            style={{
-              maxWidth: "100%",
-              maxHeight: "100%",
-              borderRadius: "12px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.6)"
-            }}
-          />
-        </div>
-
-        <div className={styles.canvasFooter}>
-          IMG300 Studio  ({selectedShape.toUpperCase()} Unit • Dual-Layer Composition)
-        </div>
-      </div>
+      {/* Shared Canvas Viewport Component */}
+      <CanvasViewport
+        canvasRef={canvasRef}
+        containerRef={containerRef}
+        footerText={`IMG300 Studio (${selectedShape.toUpperCase()} Unit • Dual-Layer Composition)`}
+      />
     </div>
   );
 };

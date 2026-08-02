@@ -7,6 +7,7 @@ import {
   DimensionPreset
 } from "../constants/generatorPresets";
 import { ToolPanel } from "./toolPanel";
+import { CanvasViewport } from "./common";
 import { IMAGE_FILTERS, MaskLayer } from "./blurAndReveal";
 import { TextLayer } from "./common";
 
@@ -476,23 +477,17 @@ export const BrandAssetGenerator: React.FC = () => {
         onExportSVG={handleExportSVG}
       />
 
-      {/* Main Canvas Viewport */}
-      <div className={styles.canvasViewport} ref={containerRef}>
-        <div className={styles.canvasWrapper}>
-          <canvas
-            ref={canvasRef}
-            className={styles.canvasElement}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            style={{ width: displayW, height: displayH, cursor: activeDrag ? "grabbing" : "default" }}
-          />
-        </div>
-        <div className={styles.canvasFooter}>
-          Tool created by Victor Chen
-        </div>
-      </div>
+      {/* Shared Canvas Viewport Component */}
+      <CanvasViewport
+        canvasRef={canvasRef}
+        containerRef={containerRef}
+        footerText={`IMG300 Studio • Blur & Reveal Studio (${dimension.w}x${dimension.h} PX)`}
+        onMouseDownCanvas={handleMouseDown}
+        onMouseMoveCanvas={handleMouseMove}
+        onMouseUpCanvas={handleMouseUp}
+        onMouseLeaveCanvas={handleMouseUp}
+        cursor={activeDrag ? "grabbing" : "default"}
+      />
     </div>
   );
 };
