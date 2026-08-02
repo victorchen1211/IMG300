@@ -457,24 +457,31 @@ export const GlassEffectGenerator: React.FC = () => {
     ctx.fillStyle = "#0a0a0a";
     ctx.fillRect(0, 0, dimension.w, dimension.h);
 
-    if (bgImage) {
-      const imgRatio = bgImage.width / bgImage.height;
-      const targetRatio = dimension.w / dimension.h;
-      let sw = 0, sh = 0, sx = 0, sy = 0;
+    if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
+      const imgW = bgImage.naturalWidth;
+      const imgH = bgImage.naturalHeight;
+      const imgAspect = imgW / imgH;
 
-      if (imgRatio > targetRatio) {
-        sh = bgImage.height;
-        sw = sh * targetRatio;
-        sx = (bgImage.width - sw) / 2;
-        sy = 0;
-      } else {
-        sw = bgImage.width;
-        sh = sw / targetRatio;
-        sx = 0;
-        sy = (bgImage.height - sh) / 2;
+      const maxW = dimension.w * 0.85;
+      const maxH = dimension.h * 0.85;
+
+      let drawW = maxW;
+      let drawH = maxW / imgAspect;
+
+      if (drawH > maxH) {
+        drawH = maxH;
+        drawW = maxH * imgAspect;
       }
 
-      ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, dimension.w, dimension.h);
+      const drawX = (dimension.w - drawW) / 2;
+      const drawY = (dimension.h - drawH) / 2;
+
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetY = 15;
+      ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
+      ctx.restore();
     } else {
       // High contrast default placeholder for glass testing
       const grad = ctx.createLinearGradient(0, 0, dimension.w, dimension.h);

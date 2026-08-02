@@ -220,26 +220,28 @@ export const BrandAssetGenerator: React.FC = () => {
       ctx.fillStyle = defaultBgColor;
       ctx.fillRect(mX, mY, m.width, m.height);
 
-      if (bgImage) {
-        const imgRatio = bgImage.width / bgImage.height;
-        const targetRatio = w / h;
-        let sw = 0, sh = 0, sx = 0, sy = 0;
+      if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
+        const imgW = bgImage.naturalWidth;
+        const imgH = bgImage.naturalHeight;
+        const imgAspect = imgW / imgH;
 
-        if (imgRatio > targetRatio) {
-          sh = bgImage.height;
-          sw = sh * targetRatio;
-          sx = (bgImage.width - sw) / 2;
-          sy = 0;
-        } else {
-          sw = bgImage.width;
-          sh = sw / targetRatio;
-          sx = 0;
-          sy = (bgImage.height - sh) / 2;
+        const maxW = w * 0.85;
+        const maxH = h * 0.85;
+
+        let drawW = maxW;
+        let drawH = maxW / imgAspect;
+
+        if (drawH > maxH) {
+          drawH = maxH;
+          drawW = maxH * imgAspect;
         }
+
+        const drawX = (w - drawW) / 2;
+        const drawY = (h - drawH) / 2;
 
         const activeFilter = IMAGE_FILTERS[selectedFilterKey]?.filter || "none";
         ctx.filter = activeFilter;
-        ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, w, h);
+        ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
       }
 
       ctx.restore();
