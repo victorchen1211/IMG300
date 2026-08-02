@@ -327,10 +327,12 @@ export const GlassEffectGenerator: React.FC = () => {
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
+      alpha: true,
       preserveDrawingBuffer: true
     });
     renderer.setSize(dimension.w, dimension.h);
     renderer.setPixelRatio(1);
+    renderer.setClearColor(0x000000, 0);
     rendererRef.current = renderer;
 
     const scene = new THREE.Scene();
@@ -344,8 +346,7 @@ export const GlassEffectGenerator: React.FC = () => {
     placeholderCanvas.height = dimension.h;
     const pCtx = placeholderCanvas.getContext("2d");
     if (pCtx) {
-      pCtx.fillStyle = "#0a0a0a";
-      pCtx.fillRect(0, 0, dimension.w, dimension.h);
+      pCtx.clearRect(0, 0, dimension.w, dimension.h);
     }
     const initialTexture = new THREE.CanvasTexture(placeholderCanvas);
     textureRef.current = initialTexture;
@@ -454,8 +455,7 @@ export const GlassEffectGenerator: React.FC = () => {
     const ctx = offscreen.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#0a0a0a";
-    ctx.fillRect(0, 0, dimension.w, dimension.h);
+    ctx.clearRect(0, 0, dimension.w, dimension.h);
 
     if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
       const imgW = bgImage.naturalWidth;
