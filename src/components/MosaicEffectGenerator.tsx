@@ -133,64 +133,7 @@ export const MosaicEffectGenerator: React.FC = () => {
     ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
     ctx.restore();
 
-    // 2. Render Directional Cutout Mirror Extension for Selected Tiles
-    if (isEffectEnabled && mirrorDirection !== "none" && selectedTiles.size > 0) {
-      selectedTiles.forEach((tileKey) => {
-        const [rStr, cStr] = tileKey.split(",");
-        const r = parseInt(rStr, 10);
-        const c = parseInt(cStr, 10);
-
-        if (r < numRows && c < numCols) {
-          const destTileX = drawX + c * tileW_Canvas;
-          const destTileY = drawY + r * tileH_Canvas;
-          const srcTileX = c * tileW_Img;
-          const srcTileY = r * tileH_Img;
-
-          let targetX = destTileX;
-          let targetY = destTileY;
-          let scaleX = 1;
-          let scaleY = 1;
-
-          if (mirrorDirection === "up") {
-            targetY = destTileY - tileH_Canvas;
-            scaleY = -1;
-          } else if (mirrorDirection === "down") {
-            targetY = destTileY + tileH_Canvas;
-            scaleY = -1;
-          } else if (mirrorDirection === "left") {
-            targetX = destTileX - tileW_Canvas;
-            scaleX = -1;
-          } else if (mirrorDirection === "right") {
-            targetX = destTileX + tileW_Canvas;
-            scaleX = -1;
-          }
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.rect(targetX, targetY, tileW_Canvas, tileH_Canvas);
-          ctx.clip();
-
-          ctx.translate(targetX + tileW_Canvas / 2, targetY + tileH_Canvas / 2);
-          ctx.scale(scaleX, scaleY);
-
-          ctx.drawImage(
-            sourceImage,
-            srcTileX,
-            srcTileY,
-            tileW_Img,
-            tileH_Img,
-            -tileW_Canvas / 2,
-            -tileH_Canvas / 2,
-            tileW_Canvas,
-            tileH_Canvas
-          );
-
-          ctx.restore();
-        }
-      });
-    }
-
-    // 3. Render In-Place Tile Effects for Selected Tiles
+    // 2. Render In-Place Tile Effects for Selected Tiles
     if (isEffectEnabled && selectedTiles.size > 0) {
       selectedTiles.forEach((tileKey) => {
         const [rStr, cStr] = tileKey.split(",");
@@ -281,6 +224,63 @@ export const MosaicEffectGenerator: React.FC = () => {
             }
             ctx.putImageData(tileImgData, destTileX, destTileY);
           }
+
+          ctx.restore();
+        }
+      });
+    }
+
+    // 3. Render Directional Cutout Mirror Extension for Selected Tiles
+    if (isEffectEnabled && mirrorDirection !== "none" && selectedTiles.size > 0) {
+      selectedTiles.forEach((tileKey) => {
+        const [rStr, cStr] = tileKey.split(",");
+        const r = parseInt(rStr, 10);
+        const c = parseInt(cStr, 10);
+
+        if (r < numRows && c < numCols) {
+          const destTileX = drawX + c * tileW_Canvas;
+          const destTileY = drawY + r * tileH_Canvas;
+          const srcTileX = c * tileW_Img;
+          const srcTileY = r * tileH_Img;
+
+          let targetX = destTileX;
+          let targetY = destTileY;
+          let scaleX = 1;
+          let scaleY = 1;
+
+          if (mirrorDirection === "up") {
+            targetY = destTileY - tileH_Canvas;
+            scaleY = -1;
+          } else if (mirrorDirection === "down") {
+            targetY = destTileY + tileH_Canvas;
+            scaleY = -1;
+          } else if (mirrorDirection === "left") {
+            targetX = destTileX - tileW_Canvas;
+            scaleX = -1;
+          } else if (mirrorDirection === "right") {
+            targetX = destTileX + tileW_Canvas;
+            scaleX = -1;
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(targetX, targetY, tileW_Canvas, tileH_Canvas);
+          ctx.clip();
+
+          ctx.translate(targetX + tileW_Canvas / 2, targetY + tileH_Canvas / 2);
+          ctx.scale(scaleX, scaleY);
+
+          ctx.drawImage(
+            sourceImage,
+            srcTileX,
+            srcTileY,
+            tileW_Img,
+            tileH_Img,
+            -tileW_Canvas / 2,
+            -tileH_Canvas / 2,
+            tileW_Canvas,
+            tileH_Canvas
+          );
 
           ctx.restore();
         }
@@ -424,7 +424,7 @@ export const MosaicEffectGenerator: React.FC = () => {
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                 }}
               >
-                Mosaic Grid Studio
+                IMG300
               </span>
             </div>
             <div
