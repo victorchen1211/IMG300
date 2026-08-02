@@ -83,11 +83,11 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
       const currentScroll = window.scrollY;
-      // Interpolate progress smoothly from 0.0 at top to 1.0 after 180px scroll
       const progress = Math.min(1, Math.max(0, currentScroll / 180));
       setScrollProgress(progress);
     };
@@ -116,7 +116,6 @@ export default function Home() {
     return matchesCategory && matchesSearch;
   });
 
-  // Calculate dynamic scale factor based on viewport version (Desktop vs Mobile)
   const scale = isMobile ? 1 - scrollProgress * 0.72 : 1 - scrollProgress * 0.81;
   const topPos = isMobile ? Math.max(10, 20 - scrollProgress * 10) : Math.max(14, 28 - scrollProgress * 14);
   const leftPos = isMobile ? Math.max(16, 16 - scrollProgress * 0) : Math.max(48, 48 - scrollProgress * 0);
@@ -140,13 +139,26 @@ export default function Home() {
 
       {/* Fixed Sticky Top Header Bar */}
       <header className={`${styles.visuTopBar} ${scrollProgress > 0.4 ? styles.scrolledTopBar : ""}`}>
-        {/* Floating White Pill Menu / Action Bar (Matching Visu.Haus Screenshot) */}
+        {/* Floating White Pill Menu Dock (Desktop Links vs Mobile Hamburger ≡) */}
         <div className={styles.visuFloatingPillDock}>
-          <nav className={styles.visuPrimaryNavInline}>
-            <button className={styles.visuNavItemLink}>Create</button>
-            <button className={styles.visuNavItemLink}>Gallery</button>
-            <button className={styles.visuNavItemLink}>Sign in</button>
-          </nav>
+          {!isMobile ? (
+            <nav className={styles.visuPrimaryNavInline}>
+              <button className={styles.visuNavItemLink}>Create</button>
+              <button className={styles.visuNavItemLink}>Gallery</button>
+              <button className={styles.visuNavItemLink}>Sign in</button>
+            </nav>
+          ) : (
+            <button
+              className={styles.visuHamburgerBtn}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Open mobile menu"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="20" height="20">
+                <line x1="4" y1="8" x2="20" y2="8" />
+                <line x1="4" y1="16" x2="20" y2="16" />
+              </svg>
+            </button>
+          )}
 
           <button
             className={styles.visuSearchIconBtn}
@@ -161,11 +173,19 @@ export default function Home() {
         </div>
       </header>
 
+      {/* Mobile Popover Dropdown Menu */}
+      {isMobile && isMobileMenuOpen && (
+        <div className={styles.visuMobileNavMenu}>
+          <button className={styles.visuMobileMenuItem}>Create</button>
+          <button className={styles.visuMobileMenuItem}>Gallery</button>
+          <button className={styles.visuMobileMenuItem}>Sign in</button>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <main className={styles.visuMainContent}>
         {/* Hero Section Layout */}
         <section className={styles.visuHeroHeader}>
-          {/* Invisible Spacer for Hero Logo position */}
           <div className={styles.heroLogoSpacer} />
 
           {/* Subtitle Tagline on Right */}
