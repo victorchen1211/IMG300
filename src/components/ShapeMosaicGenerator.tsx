@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
-import { ImageUploader, ExportControls, RangeSliderControl, AccordionSection } from "./common";
+import { ImageUploader, ExportControls, RangeSliderControl } from "./common";
 import {
   ShapeType,
   ColorMode,
@@ -323,67 +323,71 @@ export const ShapeMosaicGenerator: React.FC = () => {
         <div className={styles.brandTitle}>IMG300</div>
         <div className={styles.brandSubtitle}>Shape Mosaic Studio</div>
 
-        {/* 1. LAYER 1: Main Background Image Accordion */}
-        <AccordionSection title="Layer 1 • Main Background Image" defaultOpen={true}>
-          <ImageUploader
-            hasImage={!!bgImage}
-            onUploadImage={handleUploadBgImage}
-          />
-        </AccordionSection>
+        {/* 1. LAYER 1: Main Background Image */}
+        <div className={styles.sectionHeader}>
+          <span>Layer 1 • Main Background Image</span>
+        </div>
 
-        {/* 2. LAYER 2: Cutout Subject Image Accordion */}
-        <AccordionSection title="Layer 2 • Cutout Subject Image" defaultOpen={true}>
-          <ImageUploader
-            hasImage={!!subjectImage}
-            onUploadImage={handleUploadSubjectImage}
-          />
+        <ImageUploader
+          hasImage={!!bgImage}
+          onUploadImage={handleUploadBgImage}
+        />
 
-          {/* Layer 2 Position & Scaling Transforms */}
-          {subjectImage && (
-            <div style={{ marginTop: 12 }}>
-              <RangeSliderControl
-                label="Cutout Position X"
-                value={subjectPosX}
-                min={-500}
-                max={500}
-                step={5}
-                valueDisplay={`${subjectPosX}px`}
-                onChange={setSubjectPosX}
-                marginBottom={12}
-              />
+        {/* 2. LAYER 2: Cutout Subject Image */}
+        <div className={styles.sectionHeader} style={{ marginTop: 16 }}>
+          <span>Layer 2 • Cutout Subject Image</span>
+        </div>
 
-              <RangeSliderControl
-                label="Cutout Position Y"
-                value={subjectPosY}
-                min={-500}
-                max={500}
-                step={5}
-                valueDisplay={`${subjectPosY}px`}
-                onChange={setSubjectPosY}
-                marginBottom={12}
-              />
+        <ImageUploader
+          hasImage={!!subjectImage}
+          onUploadImage={handleUploadSubjectImage}
+        />
 
-              <RangeSliderControl
-                label="Cutout Subject Size"
-                value={subjectScale}
-                min={0.2}
-                max={2.0}
-                step={0.05}
-                valueDisplay={`${Math.round(subjectScale * 100)}%`}
-                onChange={setSubjectScale}
-                marginBottom={8}
-              />
-            </div>
-          )}
-        </AccordionSection>
+        {/* Layer 2 Position & Scaling Transforms */}
+        {subjectImage && (
+          <div style={{ marginTop: 12 }}>
+            <RangeSliderControl
+              label="Cutout Position X"
+              value={subjectPosX}
+              min={-500}
+              max={500}
+              step={5}
+              valueDisplay={`${subjectPosX}px`}
+              onChange={setSubjectPosX}
+              marginBottom={12}
+            />
 
-        {/* 3. Mosaic Shape Selection Accordion */}
+            <RangeSliderControl
+              label="Cutout Position Y"
+              value={subjectPosY}
+              min={-500}
+              max={500}
+              step={5}
+              valueDisplay={`${subjectPosY}px`}
+              onChange={setSubjectPosY}
+              marginBottom={12}
+            />
+
+            <RangeSliderControl
+              label="Cutout Subject Size"
+              value={subjectScale}
+              min={0.2}
+              max={2.0}
+              step={0.05}
+              valueDisplay={`${Math.round(subjectScale * 100)}%`}
+              onChange={setSubjectScale}
+              marginBottom={16}
+            />
+          </div>
+        )}
+
+        {/* 3. Mosaic Shape Selection Panel */}
         <ShapeSelectorPanel
           selectedShape={selectedShape}
           onSelectShape={setSelectedShape}
         />
 
-        {/* 4. Color & Tint Controls Accordion */}
+        {/* 4. Color & Tint Controls Panel */}
         <ColorModePanel
           colorMode={colorMode}
           customColor={customColor}
@@ -393,65 +397,69 @@ export const ShapeMosaicGenerator: React.FC = () => {
           onChangeTintRatio={setTintRatio}
         />
 
-        {/* 5. Checkerboard Cutout Filter Accordion */}
-        <AccordionSection title="Checkerboard Cutout Filter" defaultOpen={false}>
-          <RangeSliderControl
-            label="Cutout Sensitivity"
-            value={bgThreshold}
-            min={120}
-            max={240}
-            step={2}
-            onChange={setBgThreshold}
-            marginBottom={8}
-          />
-        </AccordionSection>
+        {/* 5. Checkerboard Background Cutout Filter Sensitivity */}
+        <div className={styles.sectionHeader}>
+          <span>Checkerboard Cutout Filter</span>
+        </div>
 
-        {/* 6. Mosaic Resolution & Spacing Accordion */}
-        <AccordionSection title="Mosaic Resolution & Spacing" defaultOpen={true}>
-          <RangeSliderControl
-            label="Tile Grid Size"
-            value={tileSize}
-            min={6}
-            max={60}
-            step={2}
-            valueDisplay={`${tileSize}px`}
-            onChange={setTileSize}
-            marginBottom={12}
-          />
+        <RangeSliderControl
+          label="Cutout Sensitivity"
+          value={bgThreshold}
+          min={120}
+          max={240}
+          step={2}
+          onChange={setBgThreshold}
+          marginBottom={16}
+        />
 
-          <RangeSliderControl
-            label="Horizontal Distance (Gap X)"
-            value={gapX}
-            min={0}
-            max={40}
-            step={1}
-            valueDisplay={`${gapX}px`}
-            onChange={setGapX}
-            marginBottom={12}
-          />
+        {/* 6. Mosaic Resolution & Spacing */}
+        <div className={styles.sectionHeader}>
+          <span>Mosaic Resolution &amp; Spacing</span>
+        </div>
 
-          <RangeSliderControl
-            label="Vertical Distance (Gap Y)"
-            value={gapY}
-            min={0}
-            max={40}
-            step={1}
-            valueDisplay={`${gapY}px`}
-            onChange={setGapY}
-            marginBottom={12}
-          />
+        <RangeSliderControl
+          label="Tile Grid Size"
+          value={tileSize}
+          min={6}
+          max={60}
+          step={2}
+          valueDisplay={`${tileSize}px`}
+          onChange={setTileSize}
+          marginBottom={16}
+        />
 
-          <RangeSliderControl
-            label="Shape Size Scale"
-            value={shapeScale}
-            min={0.4}
-            max={1.2}
-            step={0.05}
-            valueDisplay={`${Math.round(shapeScale * 100)}%`}
-            onChange={setShapeScale}
-            marginBottom={8}
-          />
-        </AccordionSection>
+        <RangeSliderControl
+          label="Horizontal Distance (Gap X)"
+          value={gapX}
+          min={0}
+          max={40}
+          step={1}
+          valueDisplay={`${gapX}px`}
+          onChange={setGapX}
+          marginBottom={16}
+        />
+
+        <RangeSliderControl
+          label="Vertical Distance (Gap Y)"
+          value={gapY}
+          min={0}
+          max={40}
+          step={1}
+          valueDisplay={`${gapY}px`}
+          onChange={setGapY}
+          marginBottom={16}
+        />
+
+        <RangeSliderControl
+          label="Shape Size Scale"
+          value={shapeScale}
+          min={0.4}
+          max={1.2}
+          step={0.05}
+          valueDisplay={`${Math.round(shapeScale * 100)}%`}
+          onChange={setShapeScale}
+          marginBottom={16}
+        />
 
         {/* Shared Export Controls Component */}
         <ExportControls
