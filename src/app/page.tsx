@@ -78,20 +78,21 @@ const CARDS: CardData[] = [
 ];
 
 export default function Home() {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [activeCategory, setActiveCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 40) {
-        setIsScrolled(true);
-      } else {
-        setIsScrolled(false);
-      }
+      const currentScroll = window.scrollY;
+      // Interpolate progress smoothly from 0.0 at top to 1.0 after 180px scroll
+      const progress = Math.min(1, Math.max(0, currentScroll / 180));
+      setScrollProgress(progress);
     };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -104,19 +105,29 @@ export default function Home() {
     return matchesCategory && matchesSearch;
   });
 
+  // Calculate dynamic scale factor from 1.0 (giant) to 0.18 (sticky header logo size)
+  const scale = 1 - scrollProgress * 0.81;
+
   return (
     <div className={styles.visuHomeRoot}>
-      {/* Fixed Sticky Header Bar with Small #0000fe Logo and Pill Navigation */}
-      <header className={`${styles.visuTopBar} ${isScrolled ? styles.scrolledTopBar : ""}`}>
-        {/* Sticky Small Stacked Logo (#0000fe) */}
-        <div className={`${styles.stickyLogoWrap} ${isScrolled ? styles.visibleStickyLogo : ""}`}>
-          <div className={styles.stackedLogoMini}>
-            <span>IMG</span>
-            <span>300</span>
-          </div>
+      {/* Continuous Morphing #0000fe Stacked Logo */}
+      <div
+        className={styles.dynamicStackedLogoContainer}
+        style={{
+          transform: `scale(${scale})`,
+          top: `${Math.max(12, 28 - scrollProgress * 14)}px`,
+          left: `${Math.max(16, 40 - scrollProgress * 24)}px`
+        }}
+      >
+        <div className={styles.stackedLogoText}>
+          <span>IMG</span>
+          <span>300</span>
         </div>
+      </div>
 
-        {/* Floating White Pill Menu / Action Bar (Matching Screenshot) */}
+      {/* Fixed Sticky Top Header Bar */}
+      <header className={`${styles.visuTopBar} ${scrollProgress > 0.4 ? styles.scrolledTopBar : ""}`}>
+        {/* Floating White Pill Menu / Action Bar (Matching Visu.Haus Screenshot) */}
         <div className={styles.visuFloatingPillDock}>
           <nav className={styles.visuPrimaryNavInline}>
             <button className={styles.visuNavItemLink}>Create</button>
@@ -137,16 +148,12 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content Area with Giant Hero Logo */}
+      {/* Main Content Area */}
       <main className={styles.visuMainContent}>
+        {/* Hero Section Layout */}
         <section className={styles.visuHeroHeader}>
-          {/* Giant 2-Line Stacked Logo: IMG / 300 in #0000fe */}
-          <div className={styles.stackedLogoHero}>
-            <h1 className={styles.heroLogoText}>
-              <span className={styles.heroLine1}>IMG</span>
-              <span className={styles.heroLine2}>300</span>
-            </h1>
-          </div>
+          {/* Invisible Spacer for Hero Logo position */}
+          <div className={styles.heroLogoSpacer} />
 
           {/* Subtitle Tagline on Right */}
           <div className={styles.heroSubtitleContainer}>

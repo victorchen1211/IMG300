@@ -201,7 +201,7 @@
 }
 
 /* ==========================================================================
-   VISU.HAUS HOMEPAGE WITH FIXED STICKY TOPBAR & FLOATING PILL DOCK (#0000fe)
+   VISU.HAUS HOMEPAGE WITH CONTINUOUS SCROLL TRANSFORMING LOGO (#0000fe)
    ========================================================================== */
 
 .visuHomeRoot {
@@ -213,6 +213,27 @@
   overflow-x: hidden;
   overflow-y: visible;
   position: relative;
+}
+
+/* Dynamic Morphing Logo pinned fixed on top-left */
+.dynamicStackedLogoContainer {
+  position: fixed;
+  z-index: 1001;
+  transform-origin: top left;
+  will-change: transform, top, left;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.stackedLogoText {
+  font-size: clamp(100px, 14vw, 170px);
+  font-weight: 900;
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  color: #0000fe !important;
+  display: flex;
+  flex-direction: column;
+  text-transform: uppercase;
 }
 
 .visuTopBar {
@@ -227,7 +248,7 @@
   padding: 16px 40px;
   background: transparent;
   pointer-events: none;
-  transition: background 0.3s ease, padding 0.3s ease, border-color 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease;
 
   &.scrolledTopBar {
     background: rgba(243, 244, 246, 0.92);
@@ -243,30 +264,6 @@
       padding: 10px 16px;
     }
   }
-}
-
-.stickyLogoWrap {
-  pointer-events: auto;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-
-  &.visibleStickyLogo {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.stackedLogoMini {
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 0.82;
-  letter-spacing: -0.05em;
-  color: #0000fe !important;
-  display: flex;
-  flex-direction: column;
-  text-transform: uppercase;
-  user-select: none;
 }
 
 .visuFloatingPillDock {
@@ -346,10 +343,10 @@
 .visuMainContent {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 100px 40px 100px;
+  padding: 40px 40px 100px;
 
   @media (max-width: 768px) {
-    padding: 80px 16px 60px;
+    padding: 20px 16px 60px;
   }
 }
 
@@ -358,7 +355,7 @@
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 48px;
-  min-height: 200px;
+  min-height: 280px;
 
   @media (max-width: 850px) {
     flex-direction: column;
@@ -368,20 +365,15 @@
   }
 }
 
-.stackedLogoHero {
-  opacity: 1;
-}
+.heroLogoSpacer {
+  width: 400px;
+  height: 220px;
+  flex-shrink: 0;
 
-.heroLogoText {
-  font-size: clamp(90px, 13vw, 170px);
-  font-weight: 900;
-  line-height: 0.82;
-  letter-spacing: -0.05em;
-  color: #0000fe !important;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  text-transform: uppercase;
+  @media (max-width: 850px) {
+    width: 100%;
+    height: 140px;
+  }
 }
 
 .heroSubtitleContainer {
