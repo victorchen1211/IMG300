@@ -481,7 +481,6 @@ export const BrandAssetGenerator: React.FC = () => {
       <CanvasViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
-        footerText={`IMG300 Studio • Blur & Reveal Studio (${dimension.w}x${dimension.h} PX)`}
         onMouseDownCanvas={handleMouseDown}
         onMouseMoveCanvas={handleMouseMove}
         onMouseUpCanvas={handleMouseUp}

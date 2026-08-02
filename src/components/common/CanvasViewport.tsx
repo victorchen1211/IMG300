@@ -6,7 +6,6 @@ import styles from "../../app/page.module.scss";
 interface CanvasViewportProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   containerRef?: React.RefObject<HTMLDivElement>;
-  footerText?: string;
   onClickCanvas?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseDownCanvas?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMoveCanvas?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -20,7 +19,6 @@ interface CanvasViewportProps {
 export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   canvasRef,
   containerRef,
-  footerText = "IMG300 Studio",
   onClickCanvas,
   onMouseDownCanvas,
   onMouseMoveCanvas,
@@ -45,16 +43,12 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
             maxWidth: "100%",
             maxHeight: "100%",
             borderRadius: "12px",
-            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.15)",
+            boxShadow: "0 10px 40px rgba(0, 0, 0, 0.15)",
             cursor,
             ...canvasStyle
           }}
         />
         {children}
-      </div>
-
-      <div className={styles.canvasFooter}>
-        {footerText}
       </div>
     </div>
   );

@@ -181,30 +181,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Studio Canvas Light Grey Background
-    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-    bgGrad.addColorStop(0, "#e8ecef");
-    bgGrad.addColorStop(1, "#f3f5f7");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Studio Grid Accent Lines
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.05)";
-    ctx.lineWidth = 1;
-    const bgStep = 40;
-    for (let x = 0; x < w; x += bgStep) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y < h; y += bgStep) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
     // LAYER 1: Render Main Background Image
     if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
       const bgW = bgImage.naturalWidth;
@@ -545,7 +521,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
       <CanvasViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
-        footerText={`IMG300 Studio (${selectedShape.toUpperCase()} Unit • Dual-Layer Composition)`}
       />
     </div>
   );

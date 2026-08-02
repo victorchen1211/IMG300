@@ -85,30 +85,6 @@ export const MosaicEffectGenerator: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Studio Dark Theme Canvas Background
-    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-    bgGrad.addColorStop(0, "#08080e");
-    bgGrad.addColorStop(1, "#12121c");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Studio Grid Accent Texture
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
-    ctx.lineWidth = 1;
-    const bgStep = 40;
-    for (let x = 0; x < w; x += bgStep) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y < h; y += bgStep) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
     if (!sourceImage || !sourceImage.complete || sourceImage.naturalWidth === 0) return;
 
     // Calculate Aspect Ratio Fit Container Bounds
@@ -784,7 +760,6 @@ export const MosaicEffectGenerator: React.FC = () => {
       <CanvasViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
-        footerText={`IMG300 Studio • Square Grid Matrix (${gridCount} Columns • ${selectedTiles.size} Selected)`}
         onClickCanvas={handleCanvasClick}
         cursor="pointer"
       />

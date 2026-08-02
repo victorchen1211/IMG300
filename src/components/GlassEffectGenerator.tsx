@@ -805,7 +805,6 @@ export const GlassEffectGenerator: React.FC = () => {
       <CanvasViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
-        footerText="IMG300 Studio • Glass Effect Studio"
         onMouseDownCanvas={handleMouseDown}
         onMouseMoveCanvas={handleMouseMove}
         onMouseUpCanvas={handleMouseUp}
