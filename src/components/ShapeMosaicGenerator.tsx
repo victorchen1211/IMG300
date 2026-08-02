@@ -292,14 +292,60 @@ export const ShapeMosaicGenerator: React.FC = () => {
     }
   }, [bgImage, subjectImage, subjectPosX, subjectPosY, subjectScale, selectedShape, tileSize, shapeScale, gapX, gapY, colorMode, customColor, tintRatio, bgThreshold]);
 
-  useEffect(() => {
+  // Dynamic Canvas Resizing based on Uploaded Image Aspect Ratio
+  const updateCanvasDimensions = useCallback(() => {
     const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.width = 1920;
-      canvas.height = 1080;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    const containerW = rect.width > 0 ? rect.width : window.innerWidth;
+    const containerH = rect.height > 0 ? rect.height : window.innerHeight;
+
+    const isMobile = containerW <= 1024 || (typeof window !== "undefined" && window.innerWidth <= 1024);
+    const scaleFactor = isMobile ? 0.98 : 0.92;
+
+    const maxW = containerW * scaleFactor;
+    const maxH = containerH * scaleFactor;
+
+    // Use uploaded background or subject image natural aspect ratio
+    const targetImage = bgImage || subjectImage;
+    const imgAspect = targetImage && targetImage.naturalWidth > 0 && targetImage.naturalHeight > 0
+      ? targetImage.naturalWidth / targetImage.naturalHeight
+      : 16 / 9;
+
+    let baseW = maxW;
+    let baseH = maxW / imgAspect;
+
+    if (baseH > maxH) {
+      baseH = maxH;
+      baseW = maxH * imgAspect;
     }
+
+    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+
+    canvas.width = Math.round(baseW * dpr);
+    canvas.height = Math.round(baseH * dpr);
+
     renderCanvas();
-  }, [renderCanvas]);
+  }, [bgImage, subjectImage, renderCanvas]);
+
+  useEffect(() => {
+    updateCanvasDimensions();
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateCanvasDimensions();
+    });
+    resizeObserver.observe(container);
+
+    window.addEventListener("resize", updateCanvasDimensions);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateCanvasDimensions);
+    };
+  }, [updateCanvasDimensions, isMobileCollapsed]);
 
   return (
     <div className={styles.appContainer} style={{ background: "#f0f2f5", minHeight: "100vh" }}>
