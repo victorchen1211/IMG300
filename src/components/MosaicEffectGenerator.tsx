@@ -93,8 +93,8 @@ export const MosaicEffectGenerator: React.FC = () => {
     const imgH = sourceImage.naturalHeight;
     const imgAspect = imgW / imgH;
 
-    const maxW = w * 0.85;
-    const maxH = h * 0.85;
+    const maxW = w * 0.92;
+    const maxH = h * 0.92;
 
     let drawW = maxW;
     let drawH = maxW / imgAspect;
