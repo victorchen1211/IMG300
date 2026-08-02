@@ -200,119 +200,260 @@
   }
 }
 
-.canvasFooter {
-  position: absolute;
-  bottom: 16px;
-  right: 20px;
-  font-family: "SF Mono", "Menlo", monospace;
-  font-size: 11px;
-  color: #777777;
-  line-height: 1.8;
-  text-align: right;
-  pointer-events: none;
+/* ==========================================================================
+   VISU.HAUS HOMEPAGE DESIGN SYSTEM STYLES
+   ========================================================================== */
 
-  span {
-    color: #888;
-  }
-
-  a {
-    color: #bbb;
-    text-decoration: none;
-    border-bottom: 1px dotted #555;
-    pointer-events: auto;
-  }
-}
-
-.navigationBar {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  display: flex;
-  gap: 8px;
-  z-index: 100;
-}
-
-.navButton {
-  padding: 6px 14px;
-  font-size: 10px;
-  font-family: "SF Mono", "Menlo", monospace;
-  background: #222222;
-  color: #aaaaaa;
-  border: 1px solid #444444;
-  cursor: pointer;
-  border-radius: 0;
-  transition: all 0.15s ease;
-
-  &:hover {
-    color: #ffffff;
-    border-color: #666666;
-  }
-
-  &.activeNav {
-    background: #ffffff;
-    color: #111111;
-    border-color: #ffffff;
-    font-weight: 600;
-  }
-}
-
-/* Home Gallery Layout */
-.homeContainer {
-  height: 100vh;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  background: #ffffff;
+.visuHomeRoot {
+  min-height: 100vh;
+  background: #f3f4f6;
   color: #111111;
-  padding: 36px 48px 80px;
-  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   overflow-x: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.homeHeader {
+.visuTopBar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(243, 244, 246, 0.85);
+  backdrop-filter: blur(12px);
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 36px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #eaeaea;
-  width: 100%;
-  box-sizing: border-box;
-}
+  align-items: center;
+  padding: 16px 40px;
+  border-bottom: 1px solid #e5e7eb;
 
-.homeTitle {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #000000;
-  margin: 0 0 4px 0;
-}
-
-.homeSubtitle {
-  font-size: 12px;
-  color: #777777;
-  font-family: "SF Mono", "Menlo", monospace;
-  margin: 0;
-}
-
-.galleryGrid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 24px;
-  width: 100%;
-  box-sizing: border-box;
-
-  @media (max-width: 1600px) {
-    grid-template-columns: repeat(4, 1fr);
+  @media (max-width: 768px) {
+    padding: 12px 16px;
   }
+}
 
-  @media (max-width: 1200px) {
+.visuBrandMark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visuBrandLogo {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: #000000;
+}
+
+.visuBrandTag {
+  font-size: 10px;
+  font-weight: 800;
+  background: #000000;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.08em;
+}
+
+.visuPrimaryNav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  padding: 4px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+}
+
+.visuNavItem {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666666;
+  border: none;
+  background: transparent;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #000000;
+  }
+}
+
+.activeNavItem {
+  background: #000000;
+  color: #ffffff !important;
+}
+
+.visuUserDock {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.visuSearchInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  @media (max-width: 900px) {
+    display: none;
+  }
+}
+
+.visuSearchIcon {
+  position: absolute;
+  left: 14px;
+  width: 14px;
+  height: 14px;
+  color: #999999;
+}
+
+.visuSearchInput {
+  padding: 9px 16px 9px 36px;
+  font-size: 12px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  width: 220px;
+  outline: none;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    border-color: #000000;
+  }
+}
+
+.visuCreateBtn {
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #000000;
+  color: #ffffff;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+
+  &:hover {
+    transform: scale(1.03);
+    background: #222222;
+  }
+}
+
+.visuMainContent {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 48px 40px 100px;
+
+  @media (max-width: 768px) {
+    padding: 32px 16px 60px;
+  }
+}
+
+.visuHeroSection {
+  margin-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.visuRotatorBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.rotatorDot {
+  width: 8px;
+  height: 8px;
+  background: #ff3b30;
+  border-radius: 50%;
+}
+
+.visuHeroTitle {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: #000000;
+  margin: 0 0 12px 0;
+  max-width: 750px;
+
+  @media (max-width: 768px) {
+    font-size: 32px;
+  }
+}
+
+.visuHeroSubtitle {
+  font-size: 16px;
+  color: #666666;
+  margin: 0 0 28px 0;
+  max-width: 620px;
+  line-height: 1.5;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+  }
+}
+
+.visuFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.visuFilterPill {
+  padding: 9px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555555;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #000000;
+    border-color: #bbbbbb;
+  }
+}
+
+.activeFilterPill {
+  background: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+.visuGridSection {
+  width: 100%;
+}
+
+.visuGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+
+  @media (max-width: 1280px) {
     grid-template-columns: repeat(3, 1fr);
   }
 
   @media (max-width: 850px) {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
   }
 
   @media (max-width: 550px) {
@@ -320,86 +461,112 @@
   }
 }
 
-.cardItem {
-  display: flex;
-  flex-direction: column;
-  text-decoration: none;
-  color: inherit;
+.visuCard {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease;
   cursor: pointer;
-  transition: transform 0.2s ease;
-  width: 100%;
-  box-sizing: border-box;
 
   &:hover {
-    .cardThumbnail {
-      transform: scale(1.03);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+
+    .visuCardOverlay {
+      opacity: 1;
     }
 
-    .cardTitle {
-      color: #007aff;
+    .visuCardImage {
+      transform: scale(1.05);
     }
   }
 }
 
-.cardThumbnailWrapper {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #111111;
-  margin-bottom: 12px;
-  position: relative;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+.visuCardDisabled {
+  opacity: 0.85;
+  cursor: not-allowed;
+
+  .visuCard {
+    &:hover {
+      transform: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    }
+  }
 }
 
-.cardThumbnail {
+.visuCardMedia {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: #111111;
+}
+
+.visuCardImage {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.cardBadge {
+.visuCardBadge {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0, 0, 0, 0.7);
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
   color: #ffffff;
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 4px 8px;
   border-radius: 6px;
-  font-family: "SF Mono", "Menlo", monospace;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
-.cardTitle {
-  font-size: 14px;
+.visuCardOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.25) 60%, rgba(0, 0, 0, 0) 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.visuCardOverlayInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.visuCardCategory {
+  font-size: 10px;
   font-weight: 700;
-  color: #111111;
-  margin: 0 0 3px 0;
-  transition: color 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #00e5ff;
 }
 
-.cardAuthor {
-  font-size: 11px;
-  color: #777777;
-  margin: 0 0 8px 0;
+.visuCardTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
 }
 
-.cardStats {
+.visuCardPlayBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000000;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  color: #888888;
-  font-family: "SF Mono", "Menlo", monospace;
-
-  span {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
