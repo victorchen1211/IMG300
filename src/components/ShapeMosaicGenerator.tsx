@@ -5,7 +5,7 @@ import styles from "../app/page.module.scss";
 import { ImageUploader, ExportControls } from "./common";
 
 type ShapeType = "circle" | "square" | "triangle" | "cross" | "diamond" | "hexagon" | "star";
-type BgFilterMode = "transparent" | "white" | "dark";
+type BgFilterMode = "checkerboard" | "transparent" | "white" | "dark";
 
 const SHAPE_OPTIONS: { id: ShapeType; label: string; icon: string }[] = [
   { id: "circle", label: "Circle", icon: "●" },
@@ -30,9 +30,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
   const [gapX, setGapX] = useState<number>(0); // Horizontal Gap Distance (0px to 40px)
   const [gapY, setGapY] = useState<number>(0); // Vertical Gap Distance (0px to 40px)
 
-  // Smart Background Filtering (Remove background, keep only center cutout subject)
-  const [bgFilterMode, setBgFilterMode] = useState<BgFilterMode>("transparent");
-  const [bgThreshold, setBgThreshold] = useState<number>(230); // Brightness threshold for white/dark filter
+  // Smart Background Filtering (Detect & remove fake PNG grey/white checkerboard or transparent PNGs)
+  const [bgFilterMode, setBgFilterMode] = useState<BgFilterMode>("checkerboard");
+  const [bgThreshold, setBgThreshold] = useState<number>(170); // Sensitivity threshold for checkerboard/white filter
 
   // Load default sample transparent PNG cutout on mount
   useEffect(() => {
@@ -113,10 +113,14 @@ export const ShapeMosaicGenerator: React.FC = () => {
         const aVal = imgData[idx + 3];
 
         const isTransparent = aVal < 30;
+        const isMonochrome = Math.abs(rVal - gVal) < 18 && Math.abs(gVal - bVal) < 18 && Math.abs(rVal - bVal) < 18;
+        const avgBrightness = (rVal + gVal + bVal) / 3;
+
+        const isCheckerboard = bgFilterMode === "checkerboard" && isMonochrome && avgBrightness >= bgThreshold;
         const isWhiteBg = bgFilterMode === "white" && rVal >= bgThreshold && gVal >= bgThreshold && bVal >= bgThreshold;
         const isDarkBg = bgFilterMode === "dark" && rVal <= (255 - bgThreshold) && gVal <= (255 - bgThreshold) && bVal <= (255 - bgThreshold);
 
-        if (isTransparent || isWhiteBg || isDarkBg) continue;
+        if (isTransparent || isCheckerboard || isWhiteBg || isDarkBg) continue;
 
         const cx = drawX + x + baseStep / 2;
         const cy = drawY + y + baseStep / 2;
@@ -255,12 +259,16 @@ export const ShapeMosaicGenerator: React.FC = () => {
             const bVal = imgData[idx + 2];
             const aVal = imgData[idx + 3];
 
-            // Background filtering checks: skip background pixels to keep ONLY center cutout subject
+            // Background filtering checks: detect alpha PNG or fake PNG grey/white checkerboard
             const isTransparent = aVal < 30;
+            const isMonochrome = Math.abs(rVal - gVal) < 18 && Math.abs(gVal - bVal) < 18 && Math.abs(rVal - bVal) < 18;
+            const avgBrightness = (rVal + gVal + bVal) / 3;
+
+            const isCheckerboard = bgFilterMode === "checkerboard" && isMonochrome && avgBrightness >= bgThreshold;
             const isWhiteBg = bgFilterMode === "white" && rVal >= bgThreshold && gVal >= bgThreshold && bVal >= bgThreshold;
             const isDarkBg = bgFilterMode === "dark" && rVal <= (255 - bgThreshold) && gVal <= (255 - bgThreshold) && bVal <= (255 - bgThreshold);
 
-            if (isTransparent || isWhiteBg || isDarkBg) continue;
+            if (isTransparent || isCheckerboard || isWhiteBg || isDarkBg) continue;
 
             const cx = drawX + x + baseStep / 2;
             const cy = drawY + y + baseStep / 2;
@@ -340,22 +348,21 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Background Filtering Controls (Keep ONLY Center Cutout Subject) */}
+        {/* 2. Background Filtering Controls (Filter Fake PNG Checkerboard or White/Dark Backdrops) */}
         <div className={styles.sectionHeader}>
           <span>Background Cutout Filter</span>
         </div>
 
         <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
           <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Filter Background</span>
+            <span className={styles.controlLabel}>Filter Mode</span>
             <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>{bgFilterMode}</span>
           </div>
-          <div style={{ display: "flex", gap: "6px" }}>
-            {(["transparent", "white", "dark"] as const).map((mode) => (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+            {(["checkerboard", "transparent", "white", "dark"] as const).map((mode) => (
               <button
                 key={mode}
                 style={{
-                  flex: 1,
                   padding: "8px 4px",
                   fontSize: "11px",
                   fontWeight: bgFilterMode === mode ? 800 : 700,
@@ -368,24 +375,24 @@ export const ShapeMosaicGenerator: React.FC = () => {
                 }}
                 onClick={() => setBgFilterMode(mode)}
               >
-                {mode === "transparent" ? "Alpha PNG" : mode === "white" ? "Cut White" : "Cut Dark"}
+                {mode === "checkerboard" ? "🏁 Checkerboard" : mode === "transparent" ? "Alpha PNG" : mode === "white" ? "Cut White" : "Cut Dark"}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Background Filter Threshold Slider (Active when white or dark filter is selected) */}
+        {/* Background Filter Threshold Slider */}
         {bgFilterMode !== "transparent" && (
           <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
             <div className={styles.controlHeader}>
-              <span className={styles.controlLabel}>Cutout Threshold</span>
+              <span className={styles.controlLabel}>Cutout Sensitivity</span>
               <span className={styles.controlValue}>{bgThreshold}</span>
             </div>
             <input
               type="range"
-              min={180}
-              max={254}
-              step={1}
+              min={120}
+              max={240}
+              step={2}
               value={bgThreshold}
               onChange={(e) => setBgThreshold(parseInt(e.target.value))}
             />
