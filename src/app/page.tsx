@@ -10,7 +10,7 @@ const CARDS: CardData[] = [
     title: "Mosaic Grid Studio",
     category: "Grid & Cutout Matrix",
     href: "/mosaic-effect",
-    image: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=800&q=80",
+    image: "/thumbnails/mosaic-effect.png",
     aspectRatio: "0.75"
   },
   {
@@ -18,7 +18,7 @@ const CARDS: CardData[] = [
     title: "Shape Mosaic Studio",
     category: "Typography Geometry",
     href: "/shape-mosaic",
-    image: "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=800&q=80",
+    image: "/thumbnails/shape-mosaic.png",
     aspectRatio: "0.7"
   },
   {
