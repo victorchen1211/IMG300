@@ -111,30 +111,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
     ctx.clearRect(0, 0, w, h);
 
-    // Studio Dark Theme Background Gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-    bgGrad.addColorStop(0, "#08080e");
-    bgGrad.addColorStop(1, "#12121c");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Studio Grid Accent Pattern
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
-    ctx.lineWidth = 1;
-    const bgStep = 40;
-    for (let x = 0; x < w; x += bgStep) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y < h; y += bgStep) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
     if (sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
       const imgW = sourceImage.naturalWidth;
       const imgH = sourceImage.naturalHeight;
@@ -386,7 +362,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       {/* Main Viewport */}
       <div className={styles.canvasViewport} ref={containerRef}>
         <div className={styles.canvasWrapper} style={{ position: "relative" }}>
-          {/* Real-time Canvas */}
+          {/* Real-time Canvas with Transparent Pattern Background */}
           <canvas
             ref={canvasRef}
             className={styles.canvasElement}
@@ -394,7 +370,11 @@ export const ShapeMosaicGenerator: React.FC = () => {
               maxWidth: "100%",
               maxHeight: "100%",
               borderRadius: "8px",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.8)"
+              boxShadow: "0 20px 50px rgba(0,0,0,0.8)",
+              backgroundImage: "linear-gradient(45deg, #141420 25%, transparent 25%), linear-gradient(-45deg, #141420 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #141420 75%), linear-gradient(-45deg, transparent 75%, #141420 75%)",
+              backgroundSize: "24px 24px",
+              backgroundPosition: "0 0, 0 12px, 12px -12px, -12px 0px",
+              backgroundColor: "#08080e"
             }}
           />
         </div>
