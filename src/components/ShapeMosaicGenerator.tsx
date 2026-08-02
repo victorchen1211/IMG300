@@ -28,7 +28,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
   const [shapeScale, setShapeScale] = useState<number>(0.85); // Shape Size Scale (0.4 to 1.2)
   const [gapX, setGapX] = useState<number>(0); // Horizontal Gap Distance (0px to 40px)
   const [gapY, setGapY] = useState<number>(0); // Vertical Gap Distance (0px to 40px)
-  const [showBaseImage, setShowBaseImage] = useState<boolean>(false); // Overlay original underneath
 
   // Load default sample transparent PNG/image on mount
   useEffect(() => {
@@ -140,14 +139,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
         offCtx.drawImage(sourceImage, 0, 0);
         const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
 
-        // Optionally draw base image underneath at low opacity if enabled
-        if (showBaseImage) {
-          ctx.save();
-          ctx.globalAlpha = 0.15;
-          ctx.drawImage(sourceImage, drawX, drawY, drawW, drawH);
-          ctx.restore();
-        }
-
         const baseStep = Math.max(4, tileSize);
         const stepX = baseStep + gapX;
         const stepY = baseStep + gapY;
@@ -186,7 +177,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       ctx.textAlign = "center";
       ctx.fillText("UPLOAD AN IMAGE TO BEGIN SHAPE MOSAIC CREATION", w / 2, h / 2);
     }
-  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY, showBaseImage]);
+  }, [sourceImage, selectedShape, tileSize, shapeScale, gapX, gapY]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -314,48 +305,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
             value={shapeScale}
             onChange={(e) => setShapeScale(parseFloat(e.target.value))}
           />
-        </div>
-
-        {/* 3. Base Image Ghost Overlay Toggle */}
-        <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
-          <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
-            <span className={styles.controlLabel}>Base Image Underlay</span>
-            <span className={styles.controlValue}>{showBaseImage ? "VISIBLE" : "HIDDEN"}</span>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "12px",
-                fontWeight: showBaseImage ? 800 : 700,
-                background: showBaseImage ? "#000000" : "#ffffff",
-                border: "2px solid #000000",
-                color: showBaseImage ? "#ffffff" : "#000000",
-                borderRadius: "6px",
-                cursor: "pointer"
-              }}
-              onClick={() => setShowBaseImage(true)}
-            >
-              ✓ Visible
-            </button>
-            <button
-              style={{
-                flex: 1,
-                padding: "8px",
-                fontSize: "12px",
-                fontWeight: !showBaseImage ? 800 : 700,
-                background: !showBaseImage ? "#000000" : "#ffffff",
-                border: "2px solid #000000",
-                color: !showBaseImage ? "#ffffff" : "#000000",
-                borderRadius: "6px",
-                cursor: "pointer"
-              }}
-              onClick={() => setShowBaseImage(false)}
-            >
-              ✕ Hidden
-            </button>
-          </div>
         </div>
       </div>
 
