@@ -140,9 +140,9 @@ export const ShapeMosaicGenerator: React.FC = () => {
     offCtx.drawImage(subjectImage, 0, 0);
     const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
 
-    const baseStep = Math.max(4, tileSize);
-    const stepX = baseStep + gapX;
-    const stepY = baseStep + gapY;
+    const baseStep = Math.max(2, tileSize * subjectScale);
+    const stepX = Math.max(2, (tileSize + gapX) * subjectScale);
+    const stepY = Math.max(2, (tileSize + gapY) * subjectScale);
     const effectiveShapeSize = baseStep * shapeScale;
     const r = effectiveShapeSize / 2;
 
@@ -151,8 +151,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
     for (let y = 0; y < finalH; y += stepY) {
       for (let x = 0; x < finalW; x += stepX) {
-        const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / finalW) * imgW));
-        const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / finalH) * imgH));
+        const sampleX = Math.min(imgW - 1, Math.floor(((x + stepX / 2) / finalW) * imgW));
+        const sampleY = Math.min(imgH - 1, Math.floor(((y + stepY / 2) / finalH) * imgH));
 
         const idx = (sampleY * imgW + sampleX) * 4;
         const rVal = imgData[idx];
@@ -167,8 +167,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
         if (isTransparent || isCheckerboard) continue;
 
-        const cx = finalX + x + baseStep / 2;
-        const cy = finalY + y + baseStep / 2;
+        const cx = finalX + x + stepX / 2;
+        const cy = finalY + y + stepY / 2;
 
         let fill = `rgb(${rVal},${gVal},${bVal})`;
         if (colorMode === "solid") {
@@ -350,18 +350,18 @@ export const ShapeMosaicGenerator: React.FC = () => {
         offCtx.drawImage(subjectImage, 0, 0);
         const imgData = offCtx.getImageData(0, 0, imgW, imgH).data;
 
-        const baseStep = Math.max(4, tileSize);
-        const stepX = baseStep + gapX;
-        const stepY = baseStep + gapY;
+        const baseStep = Math.max(2, tileSize * subjectScale);
+        const stepX = Math.max(2, (tileSize + gapX) * subjectScale);
+        const stepY = Math.max(2, (tileSize + gapY) * subjectScale);
         const effectiveShapeSize = baseStep * shapeScale;
         const { r: tr, g: tg, b: tb } = hexToRgb(customColor);
 
-        // Loop through subject bounds step-by-step with independent X/Y gaps
+        // Loop through subject bounds step-by-step with scaled step sizes
         for (let y = 0; y < finalH; y += stepY) {
           for (let x = 0; x < finalW; x += stepX) {
             // Map cell center to source image pixel coordinates
-            const sampleX = Math.min(imgW - 1, Math.floor(((x + baseStep / 2) / finalW) * imgW));
-            const sampleY = Math.min(imgH - 1, Math.floor(((y + baseStep / 2) / finalH) * imgH));
+            const sampleX = Math.min(imgW - 1, Math.floor(((x + stepX / 2) / finalW) * imgW));
+            const sampleY = Math.min(imgH - 1, Math.floor(((y + stepY / 2) / finalH) * imgH));
 
             const idx = (sampleY * imgW + sampleX) * 4;
             const rVal = imgData[idx];
@@ -377,8 +377,8 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
             if (isTransparent || isCheckerboard) continue;
 
-            const cx = finalX + x + baseStep / 2;
-            const cy = finalY + y + baseStep / 2;
+            const cx = finalX + x + stepX / 2;
+            const cy = finalY + y + stepY / 2;
 
             let fill = `rgb(${rVal}, ${gVal}, ${bVal})`;
             if (colorMode === "solid") {
