@@ -222,7 +222,7 @@ export default function Home() {
         </section>
 
         {/* Category Filter Pills */}
-        <div className={styles.visuFilterBar}>
+        {/* <div className={styles.visuFilterBar}>
           {categories.map((cat) => (
             <button
               key={cat}
@@ -232,16 +232,16 @@ export default function Home() {
               {cat}
             </button>
           ))}
-        </div>
+        </div> */}
 
         {/* Visu.Haus Masonry Gallery Grid */}
-        {/* <section className={styles.visuGridSection}>
+        <section className={styles.visuGridSection}>
           <div className={styles.visuGrid}>
             {filteredCards.map((card) => (
               <GalleryCard key={card.id} card={card} />
             ))}
           </div>
-        </section> */}
+        </section>
       </main>
     </div>
   );
