@@ -734,6 +734,7 @@ export const MosaicEffectGenerator: React.FC = () => {
         canvasRef={canvasRef}
         containerRef={containerRef}
         onClickCanvas={handleCanvasClick}
+        isMobileCollapsed={isMobileCollapsed}
         cursor="pointer"
       />
     </div>

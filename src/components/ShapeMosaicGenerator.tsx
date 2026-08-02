@@ -518,6 +518,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
       <CanvasViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
+        isMobileCollapsed={isMobileCollapsed}
       />
     </div>
   );

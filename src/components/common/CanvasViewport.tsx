@@ -13,6 +13,7 @@ interface CanvasViewportProps {
   onMouseLeaveCanvas?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   cursor?: string;
   canvasStyle?: React.CSSProperties;
+  isMobileCollapsed?: boolean;
   children?: React.ReactNode;
 }
 
@@ -26,10 +27,14 @@ export const CanvasViewport: React.FC<CanvasViewportProps> = ({
   onMouseLeaveCanvas,
   cursor = "default",
   canvasStyle,
+  isMobileCollapsed,
   children
 }) => {
   return (
-    <div className={styles.canvasViewport} ref={containerRef}>
+    <div
+      className={`${styles.canvasViewport} ${isMobileCollapsed === false ? styles.expandedDrawer : ""}`}
+      ref={containerRef}
+    >
       <div className={styles.canvasWrapper} style={{ position: "relative" }}>
         <canvas
           ref={canvasRef}
