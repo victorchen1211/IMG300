@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styles from "../app/page.module.scss";
@@ -8,10 +8,12 @@ import styles from "../app/page.module.scss";
 export interface CardData {
   id: string;
   title: string;
-  category: string;
+  author: string;
   href: string;
   image: string;
-  aspectRatio?: string;
+  likes: number;
+  remixes: number;
+  shares: number;
   isUpcoming?: boolean;
 }
 
@@ -20,55 +22,35 @@ interface GalleryCardProps {
 }
 
 export const GalleryCard: React.FC<GalleryCardProps> = ({ card }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
-  const cardInner = (
-    <div className={styles.visuCard}>
-      <div
-        className={styles.visuCardMedia}
-        style={{ aspectRatio: card.aspectRatio || "0.75" }}
-      >
+  const content = (
+    <div className={styles.cardItem}>
+      <div className={styles.cardThumbnailWrapper}>
         <Image
           src={card.image}
           alt={card.title}
           width={600}
-          height={800}
-          className={styles.visuCardImage}
+          height={375}
+          className={styles.cardThumbnail}
           unoptimized
         />
-        
-        {/* Status Badge */}
-        <div className={styles.visuCardBadge}>
-          {card.isUpcoming ? "COMING SOON" : "LIVE TOOL"}
-        </div>
-
-        {/* Visu.Haus Hover Overlay */}
-        <div className={styles.visuCardOverlay}>
-          <div className={styles.visuCardOverlayInfo}>
-            <span className={styles.visuCardCategory}>{card.category}</span>
-            <h3 className={styles.visuCardTitle}>{card.title}</h3>
-          </div>
-          <div className={styles.visuCardPlayBtn}>
-            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-              <path d="M8 5.5v13l10-6.5z" />
-            </svg>
-          </div>
-        </div>
+        {card.isUpcoming && <span className={styles.cardBadge}>Upcoming</span>}
       </div>
+      <h2 className={styles.cardTitle}>{card.title}</h2>
+      <p className={styles.cardAuthor}>{card.author}</p>
     </div>
   );
 
   if (card.isUpcoming) {
     return (
-      <div className={styles.visuCardDisabled} title="Upcoming Tool">
-        {cardInner}
+      <div style={{ opacity: 0.7, cursor: "not-allowed" }}>
+        {content}
       </div>
     );
   }
 
   return (
     <Link href={card.href} style={{ textDecoration: "none" }}>
-      {cardInner}
+      {content}
     </Link>
   );
 };

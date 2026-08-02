@@ -34,8 +34,8 @@ export const ExportControls: React.FC<ExportControlsProps> = ({ onExportPNG, onE
             padding: "10px",
             fontSize: "12px",
             fontWeight: 800,
-            background: "#000000",
-            color: "#ffffff",
+            background: "#00e5ff",
+            color: "#000000",
             border: "2px solid #000000",
             borderRadius: "6px",
             cursor: "pointer"
