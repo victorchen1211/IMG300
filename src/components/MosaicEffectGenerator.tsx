@@ -716,46 +716,6 @@ export const MosaicEffectGenerator: React.FC = () => {
           )}
         </BrikAccordionSection>
 
-        {/* Selected Tiles Indicator */}
-        <div
-          style={{
-            background: "#f8f9fa",
-            border: "1px solid #e9ecef",
-            borderRadius: "8px",
-            padding: "12px",
-            fontSize: "12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-            marginTop: "16px"
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ color: "#666666" }}>Click Canvas to Select</span>
-            <span style={{ color: "#000000", fontWeight: 700 }}>
-              {selectedTiles.size} Tiles Selected
-            </span>
-          </div>
-
-          {selectedTiles.size > 0 && (
-            <button
-              style={{
-                width: "100%",
-                padding: "8px",
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "#ff3b30",
-                border: "1px solid #ff3b30",
-                borderRadius: "6px",
-                background: "#fff0f0",
-                cursor: "pointer"
-              }}
-              onClick={() => setSelectedTiles(new Set())}
-            >
-              Clear Selection ({selectedTiles.size})
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Shared Canvas Viewport Component */}
