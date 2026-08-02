@@ -230,7 +230,7 @@ export const MosaicEffectGenerator: React.FC = () => {
       });
     }
 
-    // 3. Render Directional Tile Mirror Extension ONLY for Selected Tiles
+    // 3. Render Directional Tile Mirror Extension ONLY for Selected Tiles at Symmetric Mirrored Position
     if (isEffectEnabled && mirrorDirection !== "none" && selectedTiles.size > 0) {
       selectedTiles.forEach((tileKey) => {
         const [rStr, cStr] = tileKey.split(",");
@@ -238,27 +238,25 @@ export const MosaicEffectGenerator: React.FC = () => {
         const c = parseInt(cStr, 10);
 
         if (r < numRows && c < numCols) {
-          const destTileX = drawX + c * tileW_Canvas;
-          const destTileY = drawY + r * tileH_Canvas;
           const srcTileX = c * tileW_Img;
           const srcTileY = r * tileH_Img;
 
-          let targetTileX = destTileX;
-          let targetTileY = destTileY;
+          let targetTileX = drawX + c * tileW_Canvas;
+          let targetTileY = drawY + r * tileH_Canvas;
           let scaleX = 1;
           let scaleY = 1;
 
           if (mirrorDirection === "up") {
-            targetTileY = destTileY - tileH_Canvas;
+            targetTileY = drawY - drawH + (numRows - 1 - r) * tileH_Canvas;
             scaleY = -1;
           } else if (mirrorDirection === "down") {
-            targetTileY = destTileY + tileH_Canvas;
+            targetTileY = drawY + drawH + (numRows - 1 - r) * tileH_Canvas;
             scaleY = -1;
           } else if (mirrorDirection === "left") {
-            targetTileX = destTileX - tileW_Canvas;
+            targetTileX = drawX - drawW + (numCols - 1 - c) * tileW_Canvas;
             scaleX = -1;
           } else if (mirrorDirection === "right") {
-            targetTileX = destTileX + tileW_Canvas;
+            targetTileX = drawX + drawW + (numCols - 1 - c) * tileW_Canvas;
             scaleX = -1;
           }
 
