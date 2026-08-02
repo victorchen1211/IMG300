@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import styles from "../../app/page.module.scss";
+import { BrikAccordionSection } from "../common";
 
 export const IMAGE_FILTERS: Record<string, { label: string; filter: string }> = {
   none: { label: "Original", filter: "none" },
@@ -22,17 +22,14 @@ interface ImageFilterSelectorProps {
 
 export const ImageFilterSelector: React.FC<ImageFilterSelectorProps> = ({ selectedFilter, onSelectFilter }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Image Color Filter</span>
-      </div>
-      <select value={selectedFilter} onChange={(e) => onSelectFilter(e.target.value)} style={{ marginBottom: 14 }}>
+    <BrikAccordionSection title="Image Color Filter" defaultOpen={true}>
+      <select value={selectedFilter} onChange={(e) => onSelectFilter(e.target.value)} style={{ marginBottom: 10 }}>
         {Object.entries(IMAGE_FILTERS).map(([key, filterObj]) => (
           <option key={key} value={key}>
             {filterObj.label}
           </option>
         ))}
       </select>
-    </div>
+    </BrikAccordionSection>
   );
 };

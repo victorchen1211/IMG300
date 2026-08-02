@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import styles from "../../app/page.module.scss";
-import { ToggleSwitch } from "../common/ToggleSwitch";
+import { ToggleSwitch, BrikAccordionSection, BrikSliderControl } from "../common";
 
 interface BaseGlassControlProps {
   enabled: boolean;
@@ -42,10 +41,7 @@ export const BaseGlassControl: React.FC<BaseGlassControlProps> = ({
   onToggleFullCanvas
 }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Base Glass Pane</span>
-      </div>
+    <BrikAccordionSection title="Base Glass Pane" defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         {/* Toggle Switch */}
         <ToggleSwitch
@@ -58,13 +54,18 @@ export const BaseGlassControl: React.FC<BaseGlassControlProps> = ({
           <>
             {/* Quick Full Canvas Toggle Button */}
             {onToggleFullCanvas && (
-              <div style={{ marginBottom: 10 }}>
+              <div style={{ marginBottom: 12, marginTop: 8 }}>
                 <button
-                  className={isFullCanvas ? "primary" : "button"}
                   style={{
                     width: "100%",
                     fontSize: "11px",
-                    padding: "6px 8px"
+                    fontWeight: 700,
+                    padding: "8px",
+                    background: isFullCanvas ? "#000000" : "#ffffff",
+                    color: isFullCanvas ? "#ffffff" : "#000000",
+                    border: "2px solid #000000",
+                    borderRadius: "6px",
+                    cursor: "pointer"
                   }}
                   onClick={onToggleFullCanvas}
                 >
@@ -73,108 +74,84 @@ export const BaseGlassControl: React.FC<BaseGlassControlProps> = ({
               </div>
             )}
 
-            <div style={{ fontSize: 8, color: "#aaa", marginBottom: 8, lineHeight: 1.4 }}>
+            <div style={{ fontSize: "11px", color: "#666666", marginBottom: 10 }}>
               Hint: Drag canvas directly to position glass pane
             </div>
 
             {/* Glass Width */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Glass Width</span>
-                <span className={styles.controlValue}>{width}px</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={2000}
-                step={10}
-                value={width}
-                onChange={(e) => onChangeWidth(parseInt(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Glass Width"
+              value={width}
+              min={50}
+              max={2000}
+              step={10}
+              valueDisplay={`${width}px`}
+              onChange={onChangeWidth}
+              marginBottom={10}
+            />
 
             {/* Glass Height */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Glass Height</span>
-                <span className={styles.controlValue}>{height}px</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={2000}
-                step={10}
-                value={height}
-                onChange={(e) => onChangeHeight(parseInt(e.target.value))}
-              />
-            </div>
-
-            {/* Translucency Opacity */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Translucency Opacity</span>
-                <span className={styles.controlValue}>{opacity.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.02}
-                value={opacity}
-                onChange={(e) => onChangeOpacity(parseFloat(e.target.value))}
-              />
-            </div>
-
-            {/* Frosted Blur */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Frosted Blur</span>
-                <span className={styles.controlValue}>{blurAmount}px</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={40}
-                step={1}
-                value={blurAmount}
-                onChange={(e) => onChangeBlurAmount(parseInt(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Glass Height"
+              value={height}
+              min={50}
+              max={2000}
+              step={10}
+              valueDisplay={`${height}px`}
+              onChange={onChangeHeight}
+              marginBottom={10}
+            />
 
             {/* Position X */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Position X</span>
-                <span className={styles.controlValue}>{posX.toFixed(0)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={posX}
-                onChange={(e) => onChangePosX(parseFloat(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Position X (%)"
+              value={Math.round(posX)}
+              min={0}
+              max={100}
+              step={1}
+              valueDisplay={`${Math.round(posX)}%`}
+              onChange={onChangePosX}
+              marginBottom={10}
+            />
 
             {/* Position Y */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Position Y</span>
-                <span className={styles.controlValue}>{posY.toFixed(0)}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={posY}
-                onChange={(e) => onChangePosY(parseFloat(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Position Y (%)"
+              value={Math.round(posY)}
+              min={0}
+              max={100}
+              step={1}
+              valueDisplay={`${Math.round(posY)}%`}
+              onChange={onChangePosY}
+              marginBottom={10}
+            />
+
+            {/* Glass Opacity */}
+            <BrikSliderControl
+              label="Glass Opacity"
+              value={opacity}
+              min={0}
+              max={1}
+              step={0.05}
+              valueDisplay={`${Math.round(opacity * 100)}%`}
+              onChange={onChangeOpacity}
+              marginBottom={10}
+            />
+
+            {/* Blur Amount */}
+            <BrikSliderControl
+              label="Frosted Blur Amount"
+              value={blurAmount}
+              min={0}
+              max={20}
+              step={1}
+              valueDisplay={`${blurAmount}px`}
+              onChange={onChangeBlurAmount}
+              marginBottom={10}
+            />
           </>
         )}
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };

@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import styles from "../../app/page.module.scss";
-import { ToggleSwitch } from "../common/ToggleSwitch";
+import { ToggleSwitch, BrikAccordionSection, BrikSliderControl } from "../common";
 
 interface StraightTwistControlProps {
   enabled: boolean;
@@ -30,10 +29,7 @@ export const StraightTwistControl: React.FC<StraightTwistControlProps> = ({
   onChangeShadow
 }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Straight Glass Twist Effect</span>
-      </div>
+    <BrikAccordionSection title="Straight Glass Twist Effect" defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         {/* Toggle Switch */}
         <ToggleSwitch
@@ -43,73 +39,57 @@ export const StraightTwistControl: React.FC<StraightTwistControlProps> = ({
         />
 
         {enabled && (
-          <>
+          <div style={{ marginTop: 10 }}>
             {/* Flute Density Count */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Flute Rib Density</span>
-                <span className={styles.controlValue}>{fluteCount}</span>
-              </div>
-              <input
-                type="range"
-                min={10}
-                max={120}
-                step={1}
-                value={fluteCount}
-                onChange={(e) => onChangeFluteCount(parseInt(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Flute Rib Density"
+              value={fluteCount}
+              min={10}
+              max={120}
+              step={1}
+              valueDisplay={fluteCount}
+              onChange={onChangeFluteCount}
+              marginBottom={10}
+            />
 
             {/* Horizontal Refraction Distortion */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Horizontal Distortion</span>
-                <span className={styles.controlValue}>{distortionX.toFixed(3)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.15}
-                step={0.005}
-                value={distortionX}
-                onChange={(e) => onChangeDistortionX(parseFloat(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Horizontal Distortion"
+              value={distortionX}
+              min={0}
+              max={0.15}
+              step={0.005}
+              valueDisplay={distortionX.toFixed(3)}
+              onChange={onChangeDistortionX}
+              marginBottom={10}
+            />
 
             {/* Ridge Specular Highlight */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Ridge Highlight</span>
-                <span className={styles.controlValue}>{highlight.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.3}
-                step={0.01}
-                value={highlight}
-                onChange={(e) => onChangeHighlight(parseFloat(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Specular Highlight"
+              value={highlight}
+              min={0}
+              max={1}
+              step={0.05}
+              valueDisplay={`${Math.round(highlight * 100)}%`}
+              onChange={onChangeHighlight}
+              marginBottom={10}
+            />
 
-            {/* Valley Refraction Shadow */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Valley Edge Shadow</span>
-                <span className={styles.controlValue}>{shadow.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.4}
-                step={0.01}
-                value={shadow}
-                onChange={(e) => onChangeShadow(parseFloat(e.target.value))}
-              />
-            </div>
-          </>
+            {/* Groove Shadow */}
+            <BrikSliderControl
+              label="Groove Shadow"
+              value={shadow}
+              min={0}
+              max={1}
+              step={0.05}
+              valueDisplay={`${Math.round(shadow * 100)}%`}
+              onChange={onChangeShadow}
+              marginBottom={10}
+            />
+          </div>
         )}
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };

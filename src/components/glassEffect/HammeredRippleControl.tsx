@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import styles from "../../app/page.module.scss";
-import { ToggleSwitch } from "../common/ToggleSwitch";
+import { ToggleSwitch, BrikAccordionSection, BrikSliderControl } from "../common";
 
 interface HammeredRippleControlProps {
   enabled: boolean;
@@ -30,10 +29,7 @@ export const HammeredRippleControl: React.FC<HammeredRippleControlProps> = ({
   onChangeShadow
 }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Hammered / Rippled Glass Effect</span>
-      </div>
+    <BrikAccordionSection title="Hammered / Rippled Glass Effect" defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         {/* Toggle Switch */}
         <ToggleSwitch
@@ -43,73 +39,57 @@ export const HammeredRippleControl: React.FC<HammeredRippleControlProps> = ({
         />
 
         {enabled && (
-          <>
+          <div style={{ marginTop: 10 }}>
             {/* Ripple Noise Scale / Density */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Ripple Density Scale</span>
-                <span className={styles.controlValue}>{rippleScale}</span>
-              </div>
-              <input
-                type="range"
-                min={10}
-                max={100}
-                step={1}
-                value={rippleScale}
-                onChange={(e) => onChangeRippleScale(parseInt(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Ripple Density Scale"
+              value={rippleScale}
+              min={10}
+              max={100}
+              step={1}
+              valueDisplay={rippleScale}
+              onChange={onChangeRippleScale}
+              marginBottom={10}
+            />
 
             {/* Ripple Distortion Strength */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Ripple Distortion</span>
-                <span className={styles.controlValue}>{rippleDistortion.toFixed(3)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.15}
-                step={0.005}
-                value={rippleDistortion}
-                onChange={(e) => onChangeRippleDistortion(parseFloat(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Ripple Distortion"
+              value={rippleDistortion}
+              min={0}
+              max={0.15}
+              step={0.005}
+              valueDisplay={rippleDistortion.toFixed(3)}
+              onChange={onChangeRippleDistortion}
+              marginBottom={10}
+            />
 
             {/* Specular Highlight */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Water Glare Highlight</span>
-                <span className={styles.controlValue}>{highlight.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.3}
-                step={0.01}
-                value={highlight}
-                onChange={(e) => onChangeHighlight(parseFloat(e.target.value))}
-              />
-            </div>
+            <BrikSliderControl
+              label="Specular Highlight"
+              value={highlight}
+              min={0}
+              max={1}
+              step={0.05}
+              valueDisplay={`${Math.round(highlight * 100)}%`}
+              onChange={onChangeHighlight}
+              marginBottom={10}
+            />
 
-            {/* Ripple Shadow */}
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Ripple Emboss Shadow</span>
-                <span className={styles.controlValue}>{shadow.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={0.4}
-                step={0.01}
-                value={shadow}
-                onChange={(e) => onChangeShadow(parseFloat(e.target.value))}
-              />
-            </div>
-          </>
+            {/* Shadow Depth */}
+            <BrikSliderControl
+              label="Shadow Depth"
+              value={shadow}
+              min={0}
+              max={1}
+              step={0.05}
+              valueDisplay={`${Math.round(shadow * 100)}%`}
+              onChange={onChangeShadow}
+              marginBottom={10}
+            />
+          </div>
         )}
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };

@@ -620,11 +620,86 @@ export const GlassEffectGenerator: React.FC = () => {
   };
 
   return (
-    <div className={styles.appContainer}>
-      {/* Tool Panel Sidebar composed of modular component controls */}
-      <div className={styles.sidebar}>
-        <div className={styles.brandTitle}>IMG300</div>
-        <div className={styles.brandSubtitle}>Tool created by Victor Chen</div>
+    <div className={styles.appContainer} style={{ background: "#f0f2f5", minHeight: "100vh" }}>
+      {/* Brik.space Floating White Card Sidebar */}
+      <div
+        className={styles.sidebar}
+        style={{
+          background: "#ffffff",
+          color: "#111111",
+          borderRadius: "16px",
+          margin: "16px",
+          height: "calc(100vh - 32px)",
+          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.08)",
+          border: "1px solid #e2e8f0",
+          overflowY: "auto"
+        }}
+      >
+        {/* Brik.space Header with Reset Button */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            marginBottom: "20px",
+            paddingBottom: "16px",
+            borderBottom: "1px solid #eeeeee"
+          }}
+        >
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "14px", color: "#000000" }}>✦</span>
+              <span
+                style={{
+                  fontSize: "16px",
+                  fontWeight: 800,
+                  color: "#000000",
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                }}
+              >
+                Glass Effect Studio
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: "12px",
+                color: "#777777",
+                marginTop: "2px",
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+              }}
+            >
+              by IMG300 Studio
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setGlassWidth(700);
+              setGlassHeight(450);
+              setGlassOpacity(0.9);
+              setBlurAmount(6);
+              setGlassPos({ x: 0.15, y: 0.22 });
+              setStraightTwistEnabled(true);
+              setFluteCount(40);
+              setDistortionX(0.04);
+              setHammeredRippleEnabled(false);
+              setGridPrismEnabled(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              background: "transparent",
+              border: "none",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#000000",
+              cursor: "pointer"
+            }}
+          >
+            <span>↻</span> Reset
+          </button>
+        </div>
 
         {/* 1. Reusable Common Image Uploader Component */}
         <ImageUploader

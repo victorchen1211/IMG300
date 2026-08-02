@@ -2,7 +2,7 @@
 
 import React from "react";
 import styles from "../../app/page.module.scss";
-import { ToggleSwitch } from "../common/ToggleSwitch";
+import { ToggleSwitch, BrikAccordionSection, BrikSliderControl } from "../common";
 
 export interface MaskLayer {
   id: string;
@@ -46,22 +46,24 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
   const activeMask = masks.find((m) => m.id === selectedMaskId) || masks[0];
 
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Rectangle Masks ({masks.length})</span>
-      </div>
+    <BrikAccordionSection title={`Rectangle Masks (${masks.length})`} defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         {/* Mask Tabs Header & Add Button */}
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
           {masks.map((m, idx) => (
             <button
               key={m.id}
-              className={m.id === selectedMaskId ? "active" : ""}
               style={{
                 fontSize: "11px",
-                padding: "4px 8px",
+                fontWeight: m.id === selectedMaskId ? 800 : 700,
+                padding: "6px 10px",
                 flex: "1 0 auto",
-                minWidth: "60px"
+                minWidth: "60px",
+                background: m.id === selectedMaskId ? "#000000" : "#ffffff",
+                color: m.id === selectedMaskId ? "#ffffff" : "#000000",
+                border: "2px solid #000000",
+                borderRadius: "6px",
+                cursor: "pointer"
               }}
               onClick={() => onSelectMask(m.id)}
             >
@@ -69,8 +71,16 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
             </button>
           ))}
           <button
-            className="primary"
-            style={{ fontSize: "11px", padding: "4px 10px" }}
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              padding: "6px 10px",
+              background: "#00e5ff",
+              color: "#000000",
+              border: "2px solid #000000",
+              borderRadius: "6px",
+              cursor: "pointer"
+            }}
             onClick={onAddMask}
           >
             + Add Mask
@@ -85,10 +95,14 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
                 <button
                   style={{
                     width: "100%",
-                    fontSize: "10px",
-                    padding: "4px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    padding: "6px",
                     color: "#ff3b30",
-                    borderColor: "#ff3b30"
+                    border: "1px solid #ff3b30",
+                    background: "#fff0f0",
+                    borderRadius: "6px",
+                    cursor: "pointer"
                   }}
                   onClick={() => onDeleteMask(activeMask.id)}
                 >
@@ -105,49 +119,41 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
             />
 
             {activeMask.enabled && (
-              <>
-                <div style={{ fontSize: 8, color: "#aaa", marginBottom: 8, lineHeight: 1.4 }}>
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: "11px", color: "#666666", marginBottom: 10 }}>
                   Hint: Drag or click canvas directly to position mask
                 </div>
 
                 {/* Mask Width */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Mask Width</span>
-                    <span className={styles.controlValue}>{activeMask.width}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={50}
-                    max={1200}
-                    step={10}
-                    value={activeMask.width}
-                    onChange={(e) => onUpdateMask(activeMask.id, { width: parseInt(e.target.value) })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Mask Width"
+                  value={activeMask.width}
+                  min={50}
+                  max={1200}
+                  step={10}
+                  valueDisplay={`${activeMask.width}px`}
+                  onChange={(val) => onUpdateMask(activeMask.id, { width: val })}
+                  marginBottom={10}
+                />
 
                 {/* Mask Height */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Mask Height</span>
-                    <span className={styles.controlValue}>{activeMask.height}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={50}
-                    max={1200}
-                    step={10}
-                    value={activeMask.height}
-                    onChange={(e) => onUpdateMask(activeMask.id, { height: parseInt(e.target.value) })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Mask Height"
+                  value={activeMask.height}
+                  min={50}
+                  max={1200}
+                  step={10}
+                  valueDisplay={`${activeMask.height}px`}
+                  onChange={(val) => onUpdateMask(activeMask.id, { height: val })}
+                  marginBottom={10}
+                />
 
                 {/* Border Color */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
+                <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 6 }}>
                     <span className={styles.controlLabel}>Border Color</span>
                   </div>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 6 }}>
                     <select
                       value={activeMask.borderColor}
                       onChange={(e) => onUpdateMask(activeMask.id, { borderColor: e.target.value })}
@@ -167,7 +173,8 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
                         width: 32,
                         height: 32,
                         padding: 0,
-                        border: "1px solid #ddd",
+                        border: "2px solid #000000",
+                        borderRadius: "6px",
                         cursor: "pointer",
                         background: "none"
                       }}
@@ -177,20 +184,16 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
                 </div>
 
                 {/* Border Width */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Border Width</span>
-                    <span className={styles.controlValue}>{activeMask.borderWidth}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={12}
-                    step={1}
-                    value={activeMask.borderWidth}
-                    onChange={(e) => onUpdateMask(activeMask.id, { borderWidth: parseInt(e.target.value) })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Border Width"
+                  value={activeMask.borderWidth}
+                  min={0}
+                  max={12}
+                  step={1}
+                  valueDisplay={`${activeMask.borderWidth}px`}
+                  onChange={(val) => onUpdateMask(activeMask.id, { borderWidth: val })}
+                  marginBottom={10}
+                />
 
                 {/* Crosshair Toggle */}
                 <ToggleSwitch
@@ -200,41 +203,33 @@ export const ClarityMaskControl: React.FC<ClarityMaskControlProps> = ({
                 />
 
                 {/* Position X */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Position X</span>
-                    <span className={styles.controlValue}>{(activeMask.posX * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={activeMask.posX * 100}
-                    onChange={(e) => onUpdateMask(activeMask.id, { posX: parseFloat(e.target.value) / 100 })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Position X"
+                  value={Math.round(activeMask.posX * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  valueDisplay={`${(activeMask.posX * 100).toFixed(0)}%`}
+                  onChange={(val) => onUpdateMask(activeMask.id, { posX: val / 100 })}
+                  marginBottom={10}
+                />
 
                 {/* Position Y */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Position Y</span>
-                    <span className={styles.controlValue}>{(activeMask.posY * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={activeMask.posY * 100}
-                    onChange={(e) => onUpdateMask(activeMask.id, { posY: parseFloat(e.target.value) / 100 })}
-                  />
-                </div>
-              </>
+                <BrikSliderControl
+                  label="Position Y"
+                  value={Math.round(activeMask.posY * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  valueDisplay={`${(activeMask.posY * 100).toFixed(0)}%`}
+                  onChange={(val) => onUpdateMask(activeMask.id, { posY: val / 100 })}
+                  marginBottom={10}
+                />
+              </div>
             )}
           </>
         )}
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };

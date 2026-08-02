@@ -3,6 +3,8 @@
 import React from "react";
 import styles from "../../app/page.module.scss";
 import { ToggleSwitch } from "./ToggleSwitch";
+import { BrikAccordionSection } from "./BrikAccordionSection";
+import { BrikSliderControl } from "./BrikSliderControl";
 
 export type TextAlignMode = "left" | "center" | "right";
 
@@ -51,22 +53,24 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
   const activeText = texts.find((t) => t.id === selectedTextId) || texts[0];
 
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Typography Texts ({texts.length})</span>
-      </div>
+    <BrikAccordionSection title={`Typography Texts (${texts.length})`} defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         {/* Text Tabs Header & Add Button */}
         <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
           {texts.map((t, idx) => (
             <button
               key={t.id}
-              className={t.id === selectedTextId ? "active" : ""}
               style={{
                 fontSize: "11px",
-                padding: "4px 8px",
+                fontWeight: t.id === selectedTextId ? 800 : 700,
+                padding: "6px 10px",
                 flex: "1 0 auto",
-                minWidth: "60px"
+                minWidth: "60px",
+                background: t.id === selectedTextId ? "#000000" : "#ffffff",
+                color: t.id === selectedTextId ? "#ffffff" : "#000000",
+                border: "2px solid #000000",
+                borderRadius: "6px",
+                cursor: "pointer"
               }}
               onClick={() => onSelectText(t.id)}
             >
@@ -74,8 +78,16 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
             </button>
           ))}
           <button
-            className="primary"
-            style={{ fontSize: "11px", padding: "4px 10px" }}
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              padding: "6px 10px",
+              background: "#00e5ff",
+              color: "#000000",
+              border: "2px solid #000000",
+              borderRadius: "6px",
+              cursor: "pointer"
+            }}
             onClick={onAddText}
           >
             + Add Text
@@ -90,10 +102,14 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                 <button
                   style={{
                     width: "100%",
-                    fontSize: "10px",
-                    padding: "4px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    padding: "6px",
                     color: "#ff3b30",
-                    borderColor: "#ff3b30"
+                    border: "1px solid #ff3b30",
+                    background: "#fff0f0",
+                    borderRadius: "6px",
+                    cursor: "pointer"
                   }}
                   onClick={() => onDeleteText(activeText.id)}
                 >
@@ -104,55 +120,46 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
 
             {/* Toggle Enable */}
             <ToggleSwitch
-              label="Enable Typography Layer"
+              label="Enable Text Layer"
               checked={activeText.enabled}
               onChange={(val) => onUpdateText(activeText.id, { enabled: val })}
             />
 
             {activeText.enabled && (
-              <>
-                <div style={{ fontSize: 10, color: "#888", marginBottom: 8, lineHeight: 1.4 }}>
-                  Hint: Drag canvas directly to reposition active text
+              <div style={{ marginTop: 10 }}>
+                {/* Text String Input */}
+                <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 6 }}>
+                    <span className={styles.controlLabel}>Text Content</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={activeText.text}
+                    onChange={(e) => onUpdateText(activeText.id, { text: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "8px",
+                      fontSize: "12px",
+                      fontFamily: activeText.fontFamily || '"Telegraf", system-ui, sans-serif',
+                      border: "2px solid #000000",
+                      borderRadius: "6px",
+                      background: "#ffffff",
+                      color: "#000000",
+                      outline: "none",
+                      resize: "vertical"
+                    }}
+                  />
                 </div>
 
-                {/* Text Content Input */}
-                <textarea
-                  rows={3}
-                  placeholder="Type custom text..."
-                  value={activeText.text}
-                  onChange={(e) => onUpdateText(activeText.id, { text: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "8px",
-                    fontSize: "12px",
-                    fontFamily: activeText.fontFamily || '"Telegraf", system-ui, sans-serif',
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: "4px",
-                    background: "rgba(0, 0, 0, 0.4)",
-                    color: "#fff",
-                    resize: "vertical",
-                    marginBottom: 10
-                  }}
-                />
-
                 {/* Font Family Selection */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Font Family</span>
+                <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 6 }}>
+                    <span className={styles.controlLabel}>Font Style</span>
                   </div>
                   <select
                     value={activeText.fontFamily || FONT_OPTIONS[0].value}
                     onChange={(e) => onUpdateText(activeText.id, { fontFamily: e.target.value })}
-                    style={{
-                      width: "100%",
-                      padding: "6px 8px",
-                      background: "rgba(0,0,0,0.4)",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 4,
-                      fontSize: "12px",
-                      marginBottom: 10
-                    }}
+                    style={{ width: "100%" }}
                   >
                     {FONT_OPTIONS.map((f) => (
                       <option key={f.value} value={f.value}>
@@ -163,124 +170,102 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                 </div>
 
                 {/* Font Size */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Font Size</span>
-                    <span className={styles.controlValue}>{activeText.fontSize}px</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={16}
-                    max={200}
-                    step={2}
-                    value={activeText.fontSize}
-                    onChange={(e) => onUpdateText(activeText.id, { fontSize: parseInt(e.target.value) })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Font Size"
+                  value={activeText.fontSize}
+                  min={16}
+                  max={200}
+                  step={2}
+                  valueDisplay={`${activeText.fontSize}px`}
+                  onChange={(val) => onUpdateText(activeText.id, { fontSize: val })}
+                  marginBottom={10}
+                />
 
-                {/* Flexible Color Picker & Swatches */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
+                {/* Text Color */}
+                <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 6 }}>
                     <span className={styles.controlLabel}>Text Color</span>
                     <span className={styles.controlValue}>{activeText.color.toUpperCase()}</span>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     {/* Preset Swatches */}
                     {["#ffffff", "#000000", "#ff3366", "#00e5ff", "#ffcc00"].map((c) => (
                       <button
                         key={c}
                         onClick={() => onUpdateText(activeText.id, { color: c })}
                         style={{
-                          width: 22,
-                          height: 22,
+                          width: 24,
+                          height: 24,
                           borderRadius: "50%",
                           backgroundColor: c,
-                          border: activeText.color.toLowerCase() === c ? "2px solid #fff" : "1px solid rgba(255,255,255,0.2)",
+                          border: activeText.color.toLowerCase() === c ? "3px solid #00e5ff" : "1px solid #ccc",
                           cursor: "pointer",
                           padding: 0
                         }}
                       />
                     ))}
                     {/* Native Custom Color Picker Input */}
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                      <input
-                        type="color"
-                        value={activeText.color.startsWith("#") ? activeText.color : "#ffffff"}
-                        onChange={(e) => onUpdateText(activeText.id, { color: e.target.value })}
-                        style={{
-                          width: 26,
-                          height: 26,
-                          padding: 0,
-                          border: "none",
-                          borderRadius: "50%",
-                          cursor: "pointer",
-                          background: "none"
-                        }}
-                        title="Custom Color Picker"
-                      />
-                    </div>
+                    <input
+                      type="color"
+                      value={activeText.color.startsWith("#") ? activeText.color : "#ffffff"}
+                      onChange={(e) => onUpdateText(activeText.id, { color: e.target.value })}
+                      style={{
+                        width: 28,
+                        height: 28,
+                        padding: 0,
+                        border: "2px solid #000000",
+                        borderRadius: "50%",
+                        cursor: "pointer",
+                        background: "none"
+                      }}
+                      title="Custom Color Picker"
+                    />
                   </div>
                 </div>
 
                 {/* Text Alignment */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
+                <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
+                  <div className={styles.controlHeader} style={{ marginBottom: 6 }}>
                     <span className={styles.controlLabel}>Text Align</span>
                   </div>
                   <select
                     value={activeText.textAlign}
                     onChange={(e) => onUpdateText(activeText.id, { textAlign: e.target.value as TextAlignMode })}
-                    style={{
-                      width: "100%",
-                      padding: "6px",
-                      background: "rgba(0,0,0,0.4)",
-                      color: "#fff",
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      borderRadius: 4,
-                      marginBottom: 10
-                    }}
+                    style={{ width: "100%" }}
                   >
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
+                    <option value="left">Left Alignment</option>
+                    <option value="center">Center Alignment</option>
+                    <option value="right">Right Alignment</option>
                   </select>
                 </div>
 
                 {/* Position X */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Position X</span>
-                    <span className={styles.controlValue}>{(activeText.posX * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={activeText.posX * 100}
-                    onChange={(e) => onUpdateText(activeText.id, { posX: parseFloat(e.target.value) / 100 })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Position X"
+                  value={Math.round(activeText.posX * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  valueDisplay={`${(activeText.posX * 100).toFixed(0)}%`}
+                  onChange={(val) => onUpdateText(activeText.id, { posX: val / 100 })}
+                  marginBottom={10}
+                />
 
                 {/* Position Y */}
-                <div className={styles.controlGroup}>
-                  <div className={styles.controlHeader}>
-                    <span className={styles.controlLabel}>Position Y</span>
-                    <span className={styles.controlValue}>{(activeText.posY * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={activeText.posY * 100}
-                    onChange={(e) => onUpdateText(activeText.id, { posY: parseFloat(e.target.value) / 100 })}
-                  />
-                </div>
+                <BrikSliderControl
+                  label="Position Y"
+                  value={Math.round(activeText.posY * 100)}
+                  min={0}
+                  max={100}
+                  step={1}
+                  valueDisplay={`${(activeText.posY * 100).toFixed(0)}%`}
+                  onChange={(val) => onUpdateText(activeText.id, { posY: val / 100 })}
+                  marginBottom={10}
+                />
 
                 {/* Optional Behind Glass Option for Glass Effect */}
                 {showBehindGlassOption && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
                     <span className={styles.controlLabel}>Place Behind Glass Pane</span>
                     <input
                       type="checkbox"
@@ -290,11 +275,11 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                     />
                   </div>
                 )}
-              </>
+              </div>
             )}
           </>
         )}
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };

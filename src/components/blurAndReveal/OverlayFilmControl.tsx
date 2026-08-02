@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import styles from "../../app/page.module.scss";
-import { ToggleSwitch } from "../common/ToggleSwitch";
+import { ToggleSwitch, BrikAccordionSection, BrikSliderControl } from "../common";
 
 interface OverlayFilmControlProps {
   enabled: boolean;
@@ -22,10 +21,7 @@ export const OverlayFilmControl: React.FC<OverlayFilmControlProps> = ({
   onChangeOpacity
 }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Gaussian Blur & Film</span>
-      </div>
+    <BrikAccordionSection title="Gaussian Blur & Film" defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         <ToggleSwitch
           label="Gaussian Blur Layer"
@@ -34,39 +30,31 @@ export const OverlayFilmControl: React.FC<OverlayFilmControlProps> = ({
         />
 
         {enabled && (
-          <>
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Gaussian Blur</span>
-                <span className={styles.controlValue}>{blurAmount}px</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={40}
-                step={1}
-                value={blurAmount}
-                onChange={(e) => onChangeBlurAmount(parseInt(e.target.value))}
-              />
-            </div>
+          <div style={{ marginTop: 10 }}>
+            <BrikSliderControl
+              label="Gaussian Blur"
+              value={blurAmount}
+              min={0}
+              max={40}
+              step={1}
+              valueDisplay={`${blurAmount}px`}
+              onChange={onChangeBlurAmount}
+              marginBottom={10}
+            />
 
-            <div className={styles.controlGroup}>
-              <div className={styles.controlHeader}>
-                <span className={styles.controlLabel}>Film Tint Opacity</span>
-                <span className={styles.controlValue}>{opacity.toFixed(2)}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={opacity}
-                onChange={(e) => onChangeOpacity(parseFloat(e.target.value))}
-              />
-            </div>
-          </>
+            <BrikSliderControl
+              label="Film Tint Opacity"
+              value={opacity}
+              min={0}
+              max={1}
+              step={0.05}
+              valueDisplay={`${Math.round(opacity * 100)}%`}
+              onChange={onChangeOpacity}
+              marginBottom={10}
+            />
+          </div>
         )}
       </div>
-    </div>
+    </BrikAccordionSection>
   );
 };
