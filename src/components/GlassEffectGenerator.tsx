@@ -482,24 +482,6 @@ export const GlassEffectGenerator: React.FC = () => {
       ctx.shadowOffsetY = 15;
       ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
       ctx.restore();
-    } else {
-      // High contrast default placeholder for glass testing
-      const grad = ctx.createLinearGradient(0, 0, dimension.w, dimension.h);
-      grad.addColorStop(0, "#111116");
-      grad.addColorStop(0.5, "#22222c");
-      grad.addColorStop(1, "#0d0d12");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, dimension.w, dimension.h);
-
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(dimension.w * 0.5, dimension.h * 0.45, 230, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#111116";
-      ctx.beginPath();
-      ctx.arc(dimension.w * 0.5, dimension.h * 0.45, 140, 0, Math.PI * 2);
-      ctx.fill();
     }
 
     // Render Text Layers (if enabled and behindGlass === true, draw onto texture so WebGL glass refracts it!)

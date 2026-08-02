@@ -182,6 +182,7 @@ export const BrandAssetGenerator: React.FC = () => {
       const drawX = (w - drawW) / 2;
       const drawY = (h - drawH) / 2;
 
+      // 1. Draw Sharp Image with Drop Shadow
       ctx.save();
       ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
       ctx.shadowBlur = 40;
@@ -191,16 +192,21 @@ export const BrandAssetGenerator: React.FC = () => {
       ctx.filter = activeFilter;
       ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
       ctx.restore();
-    }
 
-    // 2. Draw Gaussian Blur & Overlay Tint Film
-    if (overlayEnabled) {
-      ctx.save();
-      ctx.filter = `blur(${blurAmount}px)`;
-      ctx.fillStyle = defaultStrokeColor;
-      ctx.globalAlpha = overlayOpacity;
-      ctx.fillRect(0, 0, w, h);
-      ctx.restore();
+      // 2. Draw Gaussian Blur & Overlay Tint Film ONLY OVER THE IMAGE BOUNDS
+      if (overlayEnabled) {
+        ctx.save();
+        ctx.filter = `blur(${blurAmount}px)`;
+        if (activeFilter !== "none") {
+          ctx.filter += ` ${activeFilter}`;
+        }
+        ctx.drawImage(bgImage, drawX, drawY, drawW, drawH);
+
+        ctx.fillStyle = defaultStrokeColor;
+        ctx.globalAlpha = overlayOpacity;
+        ctx.fillRect(drawX, drawY, drawW, drawH);
+        ctx.restore();
+      }
     }
 
     // 3. Render Clarity Rectangle Masks (with strict canvas clipping)
