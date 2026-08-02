@@ -2,7 +2,7 @@
 
 import React from "react";
 import styles from "../../app/page.module.scss";
-import { ColorPickerControl, RangeSliderControl } from "../common";
+import { ColorPickerControl, RangeSliderControl, AccordionSection } from "../common";
 
 export type ColorMode = "original" | "solid" | "tint";
 
@@ -24,13 +24,9 @@ export const ColorModePanel: React.FC<ColorModePanelProps> = ({
   onChangeTintRatio
 }) => {
   return (
-    <div>
-      <div className={styles.sectionHeader}>
-        <span>Shape Color &amp; Tint</span>
-      </div>
-
+    <AccordionSection title="Shape Color & Tint" defaultOpen={true}>
       {/* Color Mode Selection */}
-      <div className={styles.controlGroup} style={{ marginBottom: 16 }}>
+      <div className={styles.controlGroup} style={{ marginBottom: 14 }}>
         <div className={styles.controlHeader} style={{ marginBottom: 8 }}>
           <span className={styles.controlLabel}>Color Mode</span>
           <span className={styles.controlValue} style={{ textTransform: "uppercase" }}>
@@ -68,6 +64,7 @@ export const ColorModePanel: React.FC<ColorModePanelProps> = ({
             label="Custom Shape Color"
             value={customColor}
             onChange={onChangeCustomColor}
+            marginBottom={14}
           />
 
           {/* Tint Blend Ratio Slider */}
@@ -80,10 +77,11 @@ export const ColorModePanel: React.FC<ColorModePanelProps> = ({
               step={0.05}
               valueDisplay={`${Math.round(tintRatio * 100)}%`}
               onChange={onChangeTintRatio}
+              marginBottom={14}
             />
           )}
         </>
       )}
-    </div>
+    </AccordionSection>
   );
 };
