@@ -1,10 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import styles from "../../app/page.module.scss";
 import { ToggleSwitch } from "./ToggleSwitch";
 import { BrikAccordionSection } from "./BrikAccordionSection";
 import { BrikSliderControl } from "./BrikSliderControl";
+import { ColorPickerControl } from "./ColorPickerControl";
+import { FONTSOURCE_OPTIONS } from "../../utils/fontSourceConfig";
 
 export type TextAlignMode = "left" | "center" | "right";
 
@@ -21,15 +23,7 @@ export interface TextLayer {
   behindGlass?: boolean; // Optional: for Glass Effect (true = behind glass pane)
 }
 
-export const FONT_OPTIONS = [
-  { label: "Telegraf (Swiss Grotesk)", value: '"Telegraf", system-ui, sans-serif' },
-  { label: "Inter (Clean Neo-Grotesque)", value: '"Inter", system-ui, sans-serif' },
-  { label: "Playfair Display (Editorial Serif)", value: '"Playfair Display", Georgia, serif' },
-  { label: "Cinzel (Luxury Roman Serif)", value: '"Cinzel", Times, serif' },
-  { label: "Space Mono (Technical Monospace)", value: '"Space Mono", monospace' },
-  { label: "Outfit (Geometric Sans)", value: '"Outfit", system-ui, sans-serif' },
-  { label: "System Sans (Default)", value: 'system-ui, -apple-system, sans-serif' }
-];
+export const FONT_OPTIONS = FONTSOURCE_OPTIONS;
 
 interface TypographyControlProps {
   texts: TextLayer[];
@@ -50,13 +44,14 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
   onUpdateText,
   showBehindGlassOption = false
 }) => {
+  const [hoverAdd, setHoverAdd] = useState(false);
   const activeText = texts.find((t) => t.id === selectedTextId) || texts[0];
 
   return (
     <BrikAccordionSection title={`Typography Texts (${texts.length})`} defaultOpen={true}>
       <div style={{ marginBottom: 14 }}>
         {/* Text Tabs Header & Add Button */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
           {texts.map((t, idx) => (
             <button
               key={t.id}
@@ -64,29 +59,40 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                 fontSize: "11px",
                 fontWeight: t.id === selectedTextId ? 800 : 700,
                 padding: "6px 10px",
+                height: "36px",
                 flex: "1 0 auto",
                 minWidth: "60px",
                 background: t.id === selectedTextId ? "#000000" : "#ffffff",
                 color: t.id === selectedTextId ? "#ffffff" : "#000000",
                 border: "2px solid #000000",
                 borderRadius: "6px",
-                cursor: "pointer"
+                cursor: "pointer",
+                transition: "all 0.15s ease"
               }}
               onClick={() => onSelectText(t.id)}
             >
               Text {idx + 1}
             </button>
           ))}
+
+          {/* Unified Add Button with Hover Effect & Standard Size */}
           <button
+            onMouseEnter={() => setHoverAdd(true)}
+            onMouseLeave={() => setHoverAdd(false)}
             style={{
-              fontSize: "11px",
+              height: "36px",
+              padding: "8px 14px",
+              fontSize: "12px",
               fontWeight: 800,
-              padding: "6px 10px",
-              background: "#00e5ff",
+              background: "#ffffff",
               color: "#000000",
               border: "2px solid #000000",
               borderRadius: "6px",
-              cursor: "pointer"
+              cursor: "pointer",
+              flex: "1 0 auto",
+              transition: "all 0.15s ease",
+              transform: hoverAdd ? "translateY(-1px)" : "none",
+              boxShadow: hoverAdd ? "0 4px 12px rgba(0, 0, 0, 0.12)" : "none"
             }}
             onClick={onAddText}
           >
@@ -182,46 +188,12 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                 />
 
                 {/* Text Color */}
-                <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
-                  <div className={styles.controlHeader} style={{ marginBottom: 6 }}>
-                    <span className={styles.controlLabel}>Text Color</span>
-                    <span className={styles.controlValue}>{activeText.color.toUpperCase()}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    {/* Preset Swatches */}
-                    {["#ffffff", "#000000", "#ff3366", "#00e5ff", "#ffcc00"].map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => onUpdateText(activeText.id, { color: c })}
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: "50%",
-                          backgroundColor: c,
-                          border: activeText.color.toLowerCase() === c ? "3px solid #00e5ff" : "1px solid #ccc",
-                          cursor: "pointer",
-                          padding: 0
-                        }}
-                      />
-                    ))}
-                    {/* Native Custom Color Picker Input */}
-                    <input
-                      type="color"
-                      value={activeText.color.startsWith("#") ? activeText.color : "#ffffff"}
-                      onChange={(e) => onUpdateText(activeText.id, { color: e.target.value })}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        padding: 0,
-                        border: "2px solid #000000",
-                        borderRadius: "50%",
-                        cursor: "pointer",
-                        background: "none"
-                      }}
-                      title="Custom Color Picker"
-                    />
-                  </div>
-                </div>
+                <ColorPickerControl
+                  label="Text Color"
+                  value={activeText.color}
+                  onChange={(color) => onUpdateText(activeText.id, { color })}
+                  marginBottom={10}
+                />
 
                 {/* Text Alignment */}
                 <div className={styles.controlGroup} style={{ marginBottom: 10 }}>
@@ -238,30 +210,6 @@ export const TypographyControl: React.FC<TypographyControlProps> = ({
                     <option value="right">Right Alignment</option>
                   </select>
                 </div>
-
-                {/* Position X */}
-                <BrikSliderControl
-                  label="Position X"
-                  value={Math.round(activeText.posX * 100)}
-                  min={0}
-                  max={100}
-                  step={1}
-                  valueDisplay={`${(activeText.posX * 100).toFixed(0)}%`}
-                  onChange={(val) => onUpdateText(activeText.id, { posX: val / 100 })}
-                  marginBottom={10}
-                />
-
-                {/* Position Y */}
-                <BrikSliderControl
-                  label="Position Y"
-                  value={Math.round(activeText.posY * 100)}
-                  min={0}
-                  max={100}
-                  step={1}
-                  valueDisplay={`${(activeText.posY * 100).toFixed(0)}%`}
-                  onChange={(val) => onUpdateText(activeText.id, { posY: val / 100 })}
-                  marginBottom={10}
-                />
 
                 {/* Optional Behind Glass Option for Glass Effect */}
                 {showBehindGlassOption && (

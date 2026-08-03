@@ -3,12 +3,15 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styles from "../app/page.module.scss";
 import {
-  ImageUploader,
   ExportControls,
   BrikSliderControl,
   BrikAccordionSection,
   CanvasViewport
 } from "./common";
+import {
+  SingleImageUploader,
+  MosaicSubjectImageUploader
+} from "./imageUpload";
 import {
   ShapeType,
   ColorMode,
@@ -34,6 +37,10 @@ export const ShapeMosaicGenerator: React.FC = () => {
   const [subjectPosY, setSubjectPosY] = useState<number>(0); // Vertical Offset (-500px ~ 500px)
   const [subjectScale, setSubjectScale] = useState<number>(1.0); // Scale Factor (0.2 ~ 2.0)
 
+  // Canvas Mouse Dragging state for Subject Cutout
+  const [isSubjectDragging, setIsSubjectDragging] = useState(false);
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; startX: number; startY: number } | null>(null);
+
   // Shape Mosaic Control States
   const [selectedShape, setSelectedShape] = useState<ShapeType>("cross");
   const [tileSize, setTileSize] = useState<number>(18); // Tile Grid Step (6px to 60px)
@@ -43,7 +50,7 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
   // Color Override & Tint Controls
   const [colorMode, setColorMode] = useState<ColorMode>("original"); // "original" | "solid" | "tint"
-  const [customColor, setCustomColor] = useState<string>("#00e5ff"); // Default Cyber Cyan
+  const [customColor, setCustomColor] = useState<string>("#000000"); // Default Black
   const [tintRatio, setTintRatio] = useState<number>(0.5); // Blend ratio (0.1 to 1.0)
 
   // Smart Checkerboard Background Cutout Filter Sensitivity
@@ -85,6 +92,48 @@ export const ShapeMosaicGenerator: React.FC = () => {
   // Handle Layer 2 Cutout Subject Image Upload
   const handleUploadSubjectImage = (img: HTMLImageElement) => {
     setSubjectImage(img);
+  };
+
+  // Mouse Drag Canvas Event Handlers for Subject Image Position
+  const handleMouseDownCanvas = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    setIsSubjectDragging(true);
+    dragStartRef.current = {
+      mouseX,
+      mouseY,
+      startX: subjectPosX,
+      startY: subjectPosY
+    };
+  };
+
+  const handleMouseMoveCanvas = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isSubjectDragging || !dragStartRef.current || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    const deltaX = mouseX - dragStartRef.current.mouseX;
+    const deltaY = mouseY - dragStartRef.current.mouseY;
+
+    setSubjectPosX(Math.round(dragStartRef.current.startX + deltaX));
+    setSubjectPosY(Math.round(dragStartRef.current.startY + deltaY));
+  };
+
+  const handleMouseUpCanvas = () => {
+    setIsSubjectDragging(false);
+    dragStartRef.current = null;
   };
 
   // Export PNG Handler
@@ -263,7 +312,6 @@ export const ShapeMosaicGenerator: React.FC = () => {
             const bVal = imgData[idx + 2];
             const aVal = imgData[idx + 3];
 
-            // Background filtering checks: detect alpha PNG or fake PNG grey/white checkerboard
             if (isBackgroundPixel({ r: rVal, g: gVal, b: bVal, a: aVal }, bgThreshold)) {
               continue;
             }
@@ -271,12 +319,12 @@ export const ShapeMosaicGenerator: React.FC = () => {
             const cx = finalX + x + stepX / 2;
             const cy = finalY + y + stepY / 2;
 
-            let fill = `rgb(${rVal}, ${gVal}, ${bVal})`;
+            let fill = `rgb(${rVal},${gVal},${bVal})`;
             if (colorMode === "solid") {
               fill = customColor;
             } else if (colorMode === "tint") {
               const blended = blendRgb({ r: rVal, g: gVal, b: bVal }, tintRgb, tintRatio);
-              fill = `rgb(${blended.r}, ${blended.g}, ${blended.b})`;
+              fill = `rgb(${blended.r},${blended.g},${blended.b})`;
             }
 
             ctx.save();
@@ -349,53 +397,26 @@ export const ShapeMosaicGenerator: React.FC = () => {
 
   return (
     <div className={styles.appContainer} style={{ background: "#f0f2f5", minHeight: "100vh" }}>
-      {/* Brik.space Style Floating White Card Sidebar / Mobile Bottom Sheet */}
+      {/* Control Panel Sidebar */}
       <div className={`${styles.sidebar} ${isMobileCollapsed ? styles.collapsed : ""}`}>
-        {/* Mobile Bottom Sheet Handle Pill Bar */}
+        {/* Mobile Drag Handle Bar */}
         <div
           className={styles.dragHandleBar}
           onClick={() => setIsMobileCollapsed(!isMobileCollapsed)}
         >
           <div className={styles.dragHandlePill} />
-          <span className={styles.controlsHeaderTitle}>Controls</span>
+          <span className={styles.controlsHeaderTitle}>
+            {isMobileCollapsed ? "Tap to Expand Controls" : "Shape Mosaic Studio"}
+          </span>
         </div>
-        {/* Brik.space Header with Reset Button */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            marginBottom: "20px",
-            paddingBottom: "16px",
-            borderBottom: "1px solid #eeeeee"
-          }}
-        >
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "14px", color: "#000000" }}>✦</span>
-              <span
-                style={{
-                  fontSize: "16px",
-                  fontWeight: 800,
-                  color: "#000000",
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                }}
-              >
-                IMG300
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#777777",
-                marginTop: "2px",
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              }}
-            >
-              by IMG300 Studio
-            </div>
-          </div>
 
+        {/* Brand Header */}
+        <div className={styles.brandTitle}>IMG300</div>
+        <div className={styles.brandSubtitle}>Shape Mosaic Studio</div>
+
+        {/* Control Header & Reset */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "#888888" }}>STUDIO CONTROLS</span>
           <button
             onClick={() => {
               setSubjectPosX(0);
@@ -423,58 +444,23 @@ export const ShapeMosaicGenerator: React.FC = () => {
           </button>
         </div>
 
-        {/* 1. LAYER 1: Main Background Image Brik Accordion */}
-        <BrikAccordionSection title="Layer 1 • Main Background Image" defaultOpen={true}>
-          <ImageUploader
+        {/* 1. LAYER 1: Upload Image */}
+        <BrikAccordionSection title="Upload Image" defaultOpen={true}>
+          <SingleImageUploader
             hasImage={!!bgImage}
             onUploadImage={handleUploadBgImage}
+            label="Upload Image"
           />
         </BrikAccordionSection>
 
-        {/* 2. LAYER 2: Cutout Subject Image Brik Accordion */}
-        <BrikAccordionSection title="Layer 2 • Cutout Subject & Transform" defaultOpen={true}>
-          <ImageUploader
+        {/* 2. LAYER 2: Upload Backless Image */}
+        <BrikAccordionSection title="Upload Backless Image" defaultOpen={true}>
+          <MosaicSubjectImageUploader
             hasImage={!!subjectImage}
             onUploadImage={handleUploadSubjectImage}
+            subjectScale={subjectScale}
+            onChangeSubjectScale={setSubjectScale}
           />
-
-          {/* Layer 2 Position & Scaling Transforms */}
-          {subjectImage && (
-            <div style={{ marginTop: 12 }}>
-              <BrikSliderControl
-                label="Cutout Position X"
-                value={subjectPosX}
-                min={-500}
-                max={500}
-                step={5}
-                valueDisplay={`${subjectPosX}px`}
-                onChange={setSubjectPosX}
-                marginBottom={10}
-              />
-
-              <BrikSliderControl
-                label="Cutout Position Y"
-                value={subjectPosY}
-                min={-500}
-                max={500}
-                step={5}
-                valueDisplay={`${subjectPosY}px`}
-                onChange={setSubjectPosY}
-                marginBottom={10}
-              />
-
-              <BrikSliderControl
-                label="Cutout Subject Size"
-                value={subjectScale}
-                min={0.2}
-                max={2.0}
-                step={0.05}
-                valueDisplay={`${Math.round(subjectScale * 100)}%`}
-                onChange={setSubjectScale}
-                marginBottom={10}
-              />
-            </div>
-          )}
         </BrikAccordionSection>
 
         {/* 3. Mosaic Shape Selection Brik Accordion */}
@@ -562,11 +548,16 @@ export const ShapeMosaicGenerator: React.FC = () => {
         </div>
       </div>
 
-      {/* Shared Canvas Viewport Component */}
+      {/* Shared Canvas Viewport Component with Mouse Dragging for Cutout Subject */}
       <CanvasViewport
         canvasRef={canvasRef}
         containerRef={containerRef}
+        onMouseDownCanvas={handleMouseDownCanvas}
+        onMouseMoveCanvas={handleMouseMoveCanvas}
+        onMouseUpCanvas={handleMouseUpCanvas}
+        onMouseLeaveCanvas={handleMouseUpCanvas}
         isMobileCollapsed={isMobileCollapsed}
+        cursor={isSubjectDragging ? "grabbing" : "pointer"}
       />
     </div>
   );

@@ -22,6 +22,14 @@ const CARDS: CardData[] = [
     aspectRatio: "0.7"
   },
   {
+    id: "contemporary-poster",
+    title: "Contemporary Poster Studio",
+    category: "Typography Geometry",
+    href: "/contemporary-poster",
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80",
+    aspectRatio: "0.75"
+  },
+  {
     id: "halftone-matrix",
     title: "Halftone Density Generator",
     category: "Generative Shaders",
