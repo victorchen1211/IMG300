@@ -386,14 +386,14 @@ export const ContemporaryPosterGenerator: React.FC = () => {
         <div className={styles.brandTitle}>IMG300</div>
         <div className={styles.brandSubtitle}>Contemporary Poster Studio</div>
 
-        {/* Aspect Ratio Cards Selector */}
+        {/* 1. Aspect Ratio Cards Selector */}
         <CanvasSizeSelector
           label="Aspect Ratio"
           selectedFormat={selectedFormat}
           onSelectFormat={setSelectedFormat}
         />
 
-        {/* Multi-Layer Stack Manager Control Panel */}
+        {/* 2. Multi-Layer Stack Manager Control Panel */}
         <LayerManagerControl
           layers={layers}
           selectedLayerId={selectedLayerId}
@@ -402,7 +402,7 @@ export const ContemporaryPosterGenerator: React.FC = () => {
           onReorderLayers={reorderLayersById}
         />
 
-        {/* Dedicated Multi-Image Control Component */}
+        {/* 3. Dedicated Multi-Image Control Component */}
         <ImageControl
           imageLayers={imageLayers}
           selectedLayerId={selectedLayerId}
@@ -411,17 +411,7 @@ export const ContemporaryPosterGenerator: React.FC = () => {
           onUpdateImage={updateLayer}
         />
 
-        {/* Dedicated Mask Control Component */}
-        <MaskControl
-          maskLayers={maskLayers}
-          selectedLayerId={selectedLayerId}
-          onAddMask={() => addMaskLayer()}
-          onDeleteMask={removeLayer}
-          onSelectMask={setSelectedLayerId}
-          onUpdateMask={updateLayer}
-        />
-
-        {/* Dedicated Vector Shape Control Component */}
+        {/* 4. Dedicated Vector Shape Control Component */}
         <ShapeControl
           shapeLayers={shapeLayers}
           selectedLayerId={selectedLayerId}
@@ -431,7 +421,7 @@ export const ContemporaryPosterGenerator: React.FC = () => {
           onUpdateShape={updateLayer}
         />
 
-        {/* Shared Typography Control Component */}
+        {/* 5. Shared Typography Control Component */}
         <TypographyControl
           texts={textLayersAdapter}
           selectedTextId={selectedLayerId || ""}
