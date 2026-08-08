@@ -11,7 +11,7 @@ IMG300 is a computational graphic design engine for Swiss-style modular posters.
 
 $$\text{Hierarchy } (h_i) \;\;\longrightarrow\;\; \text{Grid Geometry Allocation } (C_i) \;\;\longrightarrow\;\; \text{Typography \& Image Rendering}$$
 
-1. **Phase I — Generative Geometry**: Given element hierarchies $h_i$, the exact solver evaluates all non-overlapping grid placements on a discrete 2D modular lattice to select Top-K structural compositions using a weighted multi-objective scoring function ($S_{\text{global}}$).
+1. **Phase I — Generative Geometry**: Given element hierarchies $h_i$, the bounded exact solver evaluates non-overlapping grid placements on a discrete 2D modular lattice. It uses physical cell dimensions, candidate suitability safeguards, and a provable score upper bound to select Top-K structural compositions using $S_{\text{global}}$.
 2. **Phase II — Rendering Engine**: Text font size, baseline grid snapping, leading, font weight coupling, tracking, image cropping, and focal point preservation are calculated inside container bounds $(B_i, D_i)$.
 3. **Phase III — Design Intelligence (Measurement & Dataset)**: High-dimensional feature vectors ($\mathbf{x}_C$) and multi-scenario layout test sets are generated for empirical visual validation and future preference learning.
 
@@ -21,13 +21,13 @@ $$\text{Hierarchy } (h_i) \;\;\longrightarrow\;\; \text{Grid Geometry Allocation
 
 | File Path | Role & Primary Responsibility |
 | :--- | :--- |
-| [useGridElements.ts](file:///Users/victorchen/Desktop/IMG300/src/hooks/useGridElements.ts) | **Core Engine**: Data models, candidate geometry generators, exact backtracking solver, 7 soft scoring heuristics, 1D binary search typography engine, baseline grid fitting, image fit/focal point geometry, $S_{\text{TH}}$, $S_{\text{cross}}$, and Image-Text boundary metrics. |
+| [useGridElements.ts](file:///Users/victorchen/Desktop/IMG300/src/hooks/useGridElements.ts) | **Core Engine**: Data models, physical candidate geometry generation, bounded exact Top-K solver, 7 soft scoring heuristics, 1D binary search typography engine, baseline grid fitting, image fit/focal-point geometry, $S_{\text{TH}}$, $S_{\text{cross}}$, and image-text boundary metrics. |
 | [datasetGenerator.ts](file:///Users/victorchen/Desktop/IMG300/src/utils/datasetGenerator.ts) | **Phase III Engine**: Scenario templates, multi-scenario dataset generator (`generateCompositionDataset`), and complete feature vector extractor (`extractFeatureVectorFromComposition`). |
 | [usePairwisePreferenceCollector.ts](file:///Users/victorchen/Desktop/IMG300/src/hooks/usePairwisePreferenceCollector.ts) | **Phase III Collector (Paused)**: Data stream hook for managing pairwise candidate comparisons, designer choices (A/B/Tie), and JSON export. |
-| [GridSystemStudio.tsx](file:///Users/victorchen/Desktop/IMG300/src/components/GridSystemStudio.tsx) | **Main Container Component**: Coordinates canvas sizing, web font loading, canvas rendering loop (`renderCanvas`), and export triggers. |
+| [GridSystemStudio.tsx](file:///Users/victorchen/Desktop/IMG300/src/components/GridSystemStudio.tsx) | **Main Container Component**: Coordinates canvas sizing, physical grid parameters, canvas rendering loop (`renderCanvas`), and export triggers. |
 | [GridElementControl.tsx](file:///Users/victorchen/Desktop/IMG300/src/components/common/GridElementControl.tsx) | **Alpha Test Control Panel**: Element creation/editing UI, Top-K solution rank selector tab, and collapsible research audit metrics panel. |
 | [PairwisePreferenceStudio.tsx](file:///Users/victorchen/Desktop/IMG300/src/components/common/PairwisePreferenceStudio.tsx) | **Pairwise UI Component (Secondary)**: Collapsible UI component rendering side-by-side A/B comparisons and feature delta tables. |
-| [canvasMath.ts](file:///Users/victorchen/Desktop/IMG300/src/utils/canvasMath.ts) | **Canvas Renderer Utilities**: Draws modular grid lines, baseline grid guides, snapped text typography, image cropping canvas contexts, and background filters. |
+| [gridUtils.ts](file:///Users/victorchen/Desktop/IMG300/src/utils/gridUtils.ts) | **Grid Renderer Utilities**: Defines grid settings and draws margins, modules, gutters, and grid overlays. |
 
 ---
 
@@ -45,8 +45,8 @@ To prevent future regression or misclassification, every mathematical quantity i
 ## 4. Grid & Element Data Models
 
 ### 4.1 Grid Coordinates & Metrics
-Canvas size $W \times H$, margins $M_x, M_y$, grid columns $C$, grid rows $R$, gutters $g_x, g_y$.
-Usable width $W_{\text{usable}} = W - 2M_x - (C - 1)g_x$, usable height $H_{\text{usable}} = H - 2M_y - (R - 1)g_y$.
+Canvas size $W \times H$, four margins $(M_l, M_r, M_t, M_b)$, grid columns $C$, grid rows $R$, and gutters $(g_x, g_y)$ define the physical grid.
+Usable width $W_{\text{usable}} = W - M_l - M_r - (C - 1)g_x$, usable height $H_{\text{usable}} = H - M_t - M_b - (R - 1)g_y$.
 Single Module Size:
 $$u_w = \frac{W_{\text{usable}}}{C}, \qquad u_h = \frac{H_{\text{usable}}}{R}$$
 
@@ -55,7 +55,7 @@ Each element $E_i$ has:
 - `id`, `name`, `type` (`"text"` \| `"image"`)
 - Hierarchy Weight: $h_i \in [0, 100]$
 - Plain-language Visual Priority: `primary` \| `secondary` \| `supporting`, mapped to $h_i$ through a global `gentle` \| `balanced` \| `bold` contrast preset. The raw numeric hierarchy remains available in Advanced Debug.
-- Visual Weight Proxy: $V_i = h_i^{\gamma} \quad (\gamma = 2.0)$
+- Visual Weight Proxy: $V_i = \hat{h}_i^{\alpha}$, where $\hat{h}_i = h_i / 100$ and $\alpha = 2.0$
 - Target Aspect Ratio: $r_i^{\text{target}} = \frac{w}{h}$
 - Group ID: `groupId` (optional semantic grouping string)
 - Text Properties: `content`, `fontWeight` (100–900), `fontScale` (25%–100% of the safe auto-fit size), `trackingEm` ($\tau_i$), `lineHeightRatio` ($k_i$), `textAlign` (`"left"` \| `"center"` \| `"right"` \| `"justify"`)
@@ -75,30 +75,40 @@ Total grid modules $A_{\text{grid}} = C \times R$. Available content area $A_{\t
 Ideal Module Area:
 $$A_i^{\text{ideal}} = \frac{V_i}{\sum_j V_j} \cdot A_{\text{avail}}$$
 
-Candidate geometries $(w, h)$ are generated by sweeping integer spans $1 \le w \le C, 1 \le h \le R$ and filtering candidates by area fitting penalty and ratio error:
-$$\text{Cost}(w, h) = \lambda_{\text{area}} \left| \frac{w \cdot h - A_i^{\text{ideal}}}{A_i^{\text{ideal}}} \right| + \lambda_{\text{ratio}} \left| \frac{w / h - r_i^{\text{target}}}{r_i^{\text{target}}} \right|$$
+Candidate geometries $(w, h)$ are generated by sweeping integer spans $1 \le w \le C, 1 \le h \le R$. Their ratio is evaluated in physical pixels, rather than treating a grid span as inherently square:
+$$B(w) = w \cdot u_w + (w - 1)g_x, \qquad D(h) = h \cdot u_h + (h - 1)g_y$$
+$$r^{\text{physical}}(w,h) = \frac{B(w)}{D(h)}$$
+
+Area and physical-ratio scores are combined as:
+$$S_A = \max\left(0, 1 - \frac{|w \cdot h - A_i^{\text{ideal}}|}{A_i^{\text{ideal}}}\right), \qquad S_R = \max\left(0, 1 - \frac{|r^{\text{physical}} - r_i^{\text{target}}|}{r_i^{\text{target}}}\right)$$
+$$S_{\text{candidate}} = \lambda_{\text{area}}S_A + \lambda_{\text{ratio}}S_R$$
+
+The shortlist retains up to three candidates. Candidates within 55% target-ratio error are preferred; for `cover` images, candidates retaining at least 30% of the rendered source area are also preferred. When physical restrictions leave fewer than two suitable candidates, the closest fallback is retained so a coarse grid does not become artificially infeasible. These are shortlist safeguards, not new $S_{\text{global}}$ weights or hard layout constraints.
 
 ---
 
 ## 6. Solver & Global Scoring Architecture ($S_{\text{global}}$)
 
 ### 6.1 Backtracking Exact Solver
-`solveExactLayout` recursively searches candidate assignments depth-by-depth ($0 \dots N-1$).
-At each depth, any candidate overlapping previously placed elements is immediately pruned. Complete valid placements are scored by $S_{\text{global}}$, and the Top-K highest-scoring solutions are preserved.
+`solveExactLayout` recursively searches candidate assignments depth-by-depth ($0 \dots N-1$). At each depth, candidates that overlap an earlier placement or exceed the remaining module capacity are pruned. Complete valid placements are scored by $S_{\text{global}}$.
 
-For interactive responsiveness, the geometry generator passes the three highest-scoring discrete geometries per element into the placement search. The solver exhaustively searches that shortlist when it fits within a deterministic node budget scaled by grid area. Searches exceeding the node budget return the best evaluated Top-K results with `searchTruncated: true`; the Alpha Studio displays this state so partial searches are not mistaken for exhaustive rankings. High-cost research sliders commit their value when the user releases the control, avoiding a complete solver run for every intermediate drag value.
+Once Top-K contains $K$ solutions, the solver computes a safe upper bound for each unfinished branch. The bound combines the best achievable shape score, exact candidate-area bounds for hierarchy and density, a non-overlapping edge-alignment maximum, group-proximity maximum, $S_{\text{LEC}} \le 1$, and an axis-incidence maximum. A branch is discarded only when that upper bound is below the current Kth score, so it cannot remove a potential Top-K result.
+
+For interactive responsiveness, the solver keeps a deterministic node budget scaled by grid area. Searches exceeding it return the best evaluated Top-K results with `searchTruncated: true`; the Studio displays this state so partial rankings are not mistaken for exhaustive Top-K rankings. High-cost research sliders commit their value when the user releases the control, avoiding a solver run for every intermediate drag value.
+
+Top-K retention deduplicates translation-normalized rectangle topologies. If equal-score alternatives compete, the solution occupying the larger composition bounding box is retained first, so the list offers structurally different choices instead of repeated translations.
 
 ### 6.2 Objective Scoring Function ($S_{\text{global}}$)
 $$S_{\text{global}} = \lambda_S S_{\text{shape}} + \lambda_H S_{\text{hierarchy}} + \lambda_A S_{\text{alignment}} + \lambda_D S_{\text{density}} + \lambda_P S_{\text{proximity}} + \lambda_{\text{LEC}} S_{\text{LEC}} + \lambda_{\text{axis}} S_{\text{axis}}$$
 
 | Term | Metric Name | Category | Mathematical Formulation / Definition |
 | :--- | :--- | :--- | :--- |
-| $S_{\text{shape}}$ | Aspect Ratio & Area Penalty | `SCORING SIGNAL` | Average candidate cost penalty: $1 - \frac{1}{N} \sum \min(1, \text{Cost}_i)$. |
-| $S_{\text{hierarchy}}$ | Hierarchy Order Consistency | `SCORING SIGNAL` | Pairwise area ratio alignment: $1 - \frac{1}{\binom{N}{2}} \sum_{i<j} \mathbb{I}\left[(h_i - h_j)(A_i - A_j) < 0\right]$. |
-| $S_{\text{alignment}}$ | Edge Flushness Ratio | `SCORING SIGNAL` | Proportion of outer boundary edges flush with grid boundaries. |
-| $S_{\text{density}}$ | Target Fill Density Match | `SCORING SIGNAL` | Gaussian error: $\exp\left(-\frac{(\sum A_i / A_{\text{grid}} - \text{contentDensity})^2}{0.1}\right)$. |
+| $S_{\text{shape}}$ | Hierarchy-Weighted Candidate Fit | `SCORING SIGNAL` | Visual-weighted mean of $S_{\text{candidate}}$. |
+| $S_{\text{hierarchy}}$ | Area Allocation Consistency | `SCORING SIGNAL` | $1 - \frac{1}{2}\sum_i |q_i^{\text{actual}} - q_i^{\text{ideal}}|$. |
+| $S_{\text{alignment}}$ | Shared Edge Alignment | `SCORING SIGNAL` | Normalized count of pairwise shared left, right, top, and bottom axes. |
+| $S_{\text{density}}$ | Target Fill Density Match | `SCORING SIGNAL` | $\max\left(0, 1 - \frac{|A_{\text{actual}} - A_{\text{target}}|}{A_{\text{target}}}\right)$. |
 | $S_{\text{proximity}}$ | Group Proximity ($S_P$) | `SCORING SIGNAL` | Semantic group closeness: $\frac{1}{M_{\text{pairs}}} \sum \frac{1}{1 + d_{\text{rect}}(E_i, E_j)}$. |
-| $S_{\text{LEC}}$ | Whitespace Connectivity | `SCORING SIGNAL` | Largest Empty Rectangle area normalized by total empty modules: $\frac{\text{Area}(\text{LEC})}{A_{\text{empty}}}$. |
+| $S_{\text{LEC}}$ | Whitespace Connectivity | `SCORING SIGNAL` | Largest 4-connected empty component area normalized by total empty modules: $\frac{\text{Area}(\text{LEC})}{A_{\text{empty}}}$. |
 | $S_{\text{axis}}$ | Super-Linear Axis Strength | `SCORING SIGNAL` | Normalized squared alignment count: $\frac{A_x + A_y}{4(N-1)^2}$ where $A_x = \sum (c_k - 1)^2$. |
 
 ---
@@ -145,7 +155,12 @@ Given focal point offsets $(f_x, f_y) \in [0, 1]$:
 $$o_x = \operatorname{clamp}\left(f_x \cdot W^{\text{render}} - \frac{B}{2}, \; 0, \; W^{\text{render}} - B\right)$$
 $$o_y = \operatorname{clamp}\left(f_y \cdot H^{\text{render}} - \frac{D}{2}, \; 0, \; H^{\text{render}} - D\right)$$
 
-### 8.3 Geometric Dominance (`MEASUREMENT ONLY`)
+### 8.3 Candidate-Time Cover Visibility Safeguard
+For a `cover` image, the candidate generator estimates its retained rendered-area ratio before placement scoring:
+$$q^{\text{visible}} \approx \min\left(\frac{r^{\text{physical}}}{r^{\text{source}}}, \frac{r^{\text{source}}}{r^{\text{physical}}}, 1\right)$$
+The 30% threshold influences shortlist preference only. Final crop offsets and visible-area measurements are still calculated from the selected physical container and focal point.
+
+### 8.4 Geometric Dominance (`MEASUREMENT ONLY`)
 - $V_{\text{img}}^{\text{geo}} = A_i^{\text{visible}} \quad (\text{px}^2)$
 - Canvas Coverage Ratio: $q_i^{\text{canvas}} = \frac{A_i^{\text{visible}}}{A_{\text{canvas}}}$
 

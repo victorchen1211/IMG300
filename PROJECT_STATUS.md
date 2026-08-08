@@ -17,8 +17,10 @@ The system UI has been converged into an Alpha Testing Studio optimized for prod
 
 ### Phase I — Generative Geometry (Steps 0–7)
 - Discrete 2D modular grid coordinate system
-- Exact backtracking solver with hard non-overlap and boundary pruning
-- Ideal area allocation and geometry candidate generation
+- Bounded exact Top-K solver with hard non-overlap, boundary, capacity, and safe score-upper-bound pruning
+- Physical-pixel geometry candidates using actual canvas dimensions, four margins, and gutters
+- Aspect-ratio shortlist safeguards and `cover` image visible-area protection
+- Translation-normalized Top-K topology deduplication with spatial-spread tie-breaking
 - Multi-objective global scoring ($S_{\text{shape}}, S_{\text{hierarchy}}, S_{\text{alignment}}, S_{\text{density}}, S_{\text{proximity}}, S_{\text{LEC}}, S_{\text{axis}}$)
 
 ### Phase II — Rendering System (Steps 8–10)
