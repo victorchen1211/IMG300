@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 interface BrikSliderControlProps {
   label: string;
@@ -10,6 +10,7 @@ interface BrikSliderControlProps {
   step?: number;
   valueDisplay?: string | number;
   onChange: (value: number) => void;
+  deferChange?: boolean;
   marginBottom?: number;
 }
 
@@ -21,11 +22,47 @@ export const BrikSliderControl: React.FC<BrikSliderControlProps> = ({
   step = 1,
   valueDisplay,
   onChange,
+  deferChange = false,
   marginBottom = 12
 }) => {
+  const [draftValue, setDraftValue] = useState(value);
+  const draftValueRef = useRef(value);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setDraftValue(value);
+    draftValueRef.current = value;
+  }, [value]);
+
+  useEffect(() => () => {
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+  }, []);
+
+  const effectiveValue = deferChange ? draftValue : value;
+
   // Calculate percentage fill (0% to 100%)
-  const percentage = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
-  const displayText = valueDisplay !== undefined ? valueDisplay : value;
+  const percentage = Math.max(0, Math.min(100, ((effectiveValue - min) / (max - min)) * 100));
+  const displayText = deferChange
+    ? effectiveValue
+    : valueDisplay !== undefined ? valueDisplay : value;
+
+  const commitDraftValue = () => {
+    if (commitTimerRef.current) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+    if (deferChange && draftValueRef.current !== value) {
+      onChange(draftValueRef.current);
+    }
+  };
+
+  const scheduleDraftCommit = (nextValue: number) => {
+    if (commitTimerRef.current) clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = setTimeout(() => {
+      commitTimerRef.current = null;
+      onChange(nextValue);
+    }, 150);
+  };
 
   return (
     <div
@@ -104,8 +141,20 @@ export const BrikSliderControl: React.FC<BrikSliderControlProps> = ({
           min={min}
           max={max}
           step={step}
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
+          value={effectiveValue}
+          onChange={(e) => {
+            const nextValue = parseFloat(e.target.value);
+            if (deferChange) {
+              draftValueRef.current = nextValue;
+              setDraftValue(nextValue);
+              scheduleDraftCommit(nextValue);
+            } else {
+              onChange(nextValue);
+            }
+          }}
+          onPointerUp={commitDraftValue}
+          onKeyUp={commitDraftValue}
+          onBlur={commitDraftValue}
           style={{
             position: "absolute",
             top: 0,

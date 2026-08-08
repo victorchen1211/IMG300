@@ -159,7 +159,7 @@ export function useCanvasTextDrag({
     [enabled, layers, getCanvasCoordinates, canvasRef, onSelectLayer]
   );
 
-  // Mouse Move Event: Drag active layer or individual ellipse cutout
+  // Mouse Move Event: Drag active layer
   const onMouseMoveCanvas = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (!isDragging || !dragStartRef.current) return;
@@ -182,7 +182,7 @@ export function useCanvasTextDrag({
         posY: newPosY
       });
     },
-    [isDragging, getCanvasCoordinates, layers, onUpdateLayer]
+    [isDragging, getCanvasCoordinates, onUpdateLayer]
   );
 
   // Mouse Up / Mouse Leave Events

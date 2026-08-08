@@ -30,6 +30,14 @@ const CARDS: CardData[] = [
     aspectRatio: "0.75"
   },
   {
+    id: "grid-system",
+    title: "Grid System Studio",
+    category: "Typography Geometry",
+    href: "/grid-system",
+    image: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80",
+    aspectRatio: "0.75"
+  },
+  {
     id: "halftone-matrix",
     title: "Halftone Density Generator",
     category: "Generative Shaders",
